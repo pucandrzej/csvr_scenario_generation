@@ -1,0 +1,21 @@
+# ---- Text / LaTeX ----
+text.usetex : True
+font.family : serif
+font.serif  : Computer Modern
+axes.unicode_minus : False
+
+# ---- Line widths ----
+axes.linewidth : 0.4
+xtick.major.width : 0.4
+xtick.minor.width : 0.2
+ytick.major.width : 0.4
+ytick.minor.width : 0.2
+
+# ---- Font sizes ----
+font.size : 7
+axes.titlesize : 8
+axes.labelsize : 7
+xtick.labelsize : 6
+ytick.labelsize : 6
+legend.fontsize : 7
+figure.titlesize : 9

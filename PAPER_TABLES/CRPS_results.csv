@@ -1,0 +1,10 @@
+,model,window,MULTI_dual_coeff,MULTI_None,CHAIN_dual_coeff,CHAIN_None,BENCHMARK_BENCHMARK
+0,hist,28.0,2.089,2.09,2.071,2.071,
+1,hist,182.0,1.976,2.052,1.98,2.03,
+2,hist,None,1.993,2.049,2.063,2.026,
+3,weather,28.0,2.271,2.268,2.269,2.267,
+4,weather,182.0,2.261,2.25,2.248,2.248,
+5,weather,None,2.26,2.247,2.242,2.245,
+6,benchmark,28.0,,,,,1.995
+7,benchmark,182.0,,,,,1.953
+8,benchmark,None,,,,,1.947
