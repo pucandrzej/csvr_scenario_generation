@@ -1,6 +1,6 @@
 # Replication package for "Scenario generation of intraday electricity price paths for optimal trading in continuous markets".
 ## Authors
-Andrzej Puć, Joanna Janczura
+Andrzej Puć
 
 Wrocław University of Science and Technology, Faculty of Pure and Applied Mathematics, Hugo Steinhaus Center, Wyb. Wyspiańskiego 27, Wrocław, 50-370, Poland
 
