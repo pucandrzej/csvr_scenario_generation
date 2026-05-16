@@ -1,7 +1,6 @@
 forecasting_horizon = 31  # number of 5min intervals in the forecasting path
 deliveries_no = 96  # number of 15min deliveries during one day
 trading_start_hour = 16
-first_day_index_of_simulation = 62
 first_trading_start_of_simulation = "2019-01-01 16:00:00"
 needed_columns_of_continuous_preprocessed_data = (
     [str(i) for i in range(192)] + ["288"]

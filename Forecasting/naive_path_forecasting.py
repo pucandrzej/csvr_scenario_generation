@@ -25,7 +25,6 @@ from config.forecasting_simulation_config import (
     forecasting_horizon,
     first_trading_start_of_simulation,
     needed_columns_of_continuous_preprocessed_data,
-    first_day_index_of_simulation,
     total_no_of_cont_market_columns,
 )
 
@@ -162,7 +161,7 @@ def run_one_day(inp):
 
 if __name__ == "__main__":
     con = sqlite3.connect(MARKET_DATA_DIR)
-    sql_str = f"SELECT * FROM with_dummies WHERE Index_daily <= {trade_time} AND Time >= '{first_trading_start_of_simulation}' AND Day >= {first_day_index_of_simulation};"  # load only the data required for simu, so up to last trade time in the trajectory
+    sql_str = f"SELECT * FROM with_dummies WHERE Index_daily <= {trade_time} AND Time >= '{first_trading_start_of_simulation}';"  # load only the data required for simu, so up to last trade time in the trajectory
     daily_data = pd.read_sql(sql_str, con)[
         needed_columns_of_continuous_preprocessed_data
     ].to_numpy()

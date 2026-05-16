@@ -37,7 +37,6 @@ from config.forecasting_simulation_config import (
     calib_window_days_no,
     forecasting_horizon,
     first_trading_start_of_simulation,
-    first_day_index_of_simulation,
     needed_columns_of_continuous_preprocessed_data,
     total_no_of_cont_market_columns,
 )
@@ -589,7 +588,7 @@ if __name__ == "__main__":
     con = sqlite3.connect(
         os.path.join(DATA_DIR, "preprocessed_continuous_intraday_prices_and_volume.db")
     )
-    sql_str = f"SELECT * FROM with_dummies WHERE Index_daily <= {trade_time} AND Time >= '{first_trading_start_of_simulation}' AND Day >= {first_day_index_of_simulation};"  # load only the data required for simu, so up to last trade time in the trajectory
+    sql_str = f"SELECT * FROM with_dummies WHERE Index_daily <= {trade_time} AND Time >= '{first_trading_start_of_simulation}';"  # load only the data required for simu, so up to last trade time in the trajectory
     daily_data = pd.read_sql(sql_str, con)[
         needed_columns_of_continuous_preprocessed_data
     ].to_numpy()  # column 288 contains weekday no. indicators

@@ -17,7 +17,6 @@ from config.forecasting_simulation_config import (
     forecasting_horizon,
     trading_start_hour,
     first_trading_start_of_simulation,
-    first_day_index_of_simulation,
     needed_columns_of_continuous_preprocessed_data,
     total_no_of_cont_market_columns,
     last_trade_time_in_path_delta,
