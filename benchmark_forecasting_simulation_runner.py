@@ -1,10 +1,12 @@
 """Runner of the naive benchmark path forecasting simulation for all the deliveries"""
 
+import os
 import sys
 import time
 import subprocess
 
-from utils.forecasting_simulation_config import (
+from config.paths import LOGS_DIR
+from config.forecasting_simulation_config import (
     limited_scenarios_number,
     deliveries_no,
     calib_window_days_no,
@@ -28,6 +30,11 @@ parser.add_argument(
 parser.add_argument(
     "--processes", default=32, help="No of parallel processes in underlying simulation."
 )
+parser.add_argument(
+    "--special_results_directory",
+    default=None,
+    help="Running on WCSS Wroclaw University of Science and Technology supercomputers requires us to save the results in dedicated path.",
+)
 
 processes = 32
 
@@ -35,11 +42,17 @@ args = parser.parse_args()
 
 start = args.start_delivery
 sys.stderr = open(
-    f"BENCHMARK_SIMU_ERR_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt",
+    os.path.join(
+        LOGS_DIR,
+        f"BENCHMARK_SIMU_ERR_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt"
+    ),
     "w",
 )
 sys.stdout = open(
-    f"BENCHMARK_SIMU_LOG_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt",
+    os.path.join(
+        LOGS_DIR,
+        f"BENCHMARK_SIMU_LOG_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt"
+    ),
     "w",
 )
 
@@ -52,7 +65,7 @@ for delivery_time in range(int(start), int(args.end_delivery)):
             [
                 sys.executable,
                 "-m",
-                "naive_path_forecasting.py",
+                "Forecasting.naive_path_forecasting",
                 "--trade_time",
                 str(trade_time),
                 "--delivery_time",
@@ -64,6 +77,11 @@ for delivery_time in range(int(start), int(args.end_delivery)):
             ]
             + ["--required_scenarios", str(required_scenarios)]
             * (required_scenarios is not None)
+            + [
+                    "--special_results_directory",
+                    str(args.special_results_directory),
+            ]
+            * (args.special_results_directory is not None)
         )
 
 invoked = 0

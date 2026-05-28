@@ -142,7 +142,6 @@ def get_pinball_from_csvr(inp):
 
 if __name__ == "__main__":
     model_names = ["CHAIN_prediction", "MULTI_prediction"]
-    results_dirs = [MODEL_RESULTS_DIR, MODEL_RESULTS_DIR, BENCHMARK_RESULTS_DIR]
     deliveries = range(96)
 
     inputlist = []
@@ -150,7 +149,8 @@ if __name__ == "__main__":
     for probab_approach in probab_approaches:
         for delivery in deliveries:
             if probab_approach != "benchmark":
-                for model_name, results_dir in zip(model_names, results_dirs):
+                results_dir = MODEL_RESULTS_DIR
+                for model_name in model_names:
                     for (
                         wasserstein_stopping_crit,
                         scenarios_sampling_method,
@@ -173,17 +173,19 @@ if __name__ == "__main__":
                         )
 
             else:
-                inputlist.append(
-                    [
-                        "benchmark",
-                        results_dir,
-                        delivery,
-                        False,
-                        None,
-                        required_scenarios,
-                        probab_approach,
-                    ]
-                )
+                result_dir = BENCHMARK_RESULTS_DIR
+                for required_scenarios in repeated_required_scenarios_list:
+                    inputlist.append(
+                        [
+                            "benchmark",
+                            result_dir,
+                            delivery,
+                            False,
+                            None,
+                            required_scenarios,
+                            probab_approach,
+                        ]
+                    )
 
     print(f"Running {len(inputlist)} tasks")
 

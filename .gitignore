@@ -230,6 +230,7 @@ pyvenv311
 Data/preprocessed_continuous_intraday_prices_and_volume.db
 # ignore forecasting study results
 FORECASTING_SIMULATION_RESULTS
+BENCHMARK_FORECASTING_SIMULATION_RESULTS
 LOGS
 MAE_CRPS_RESULTS
 # ignore pickles of trading strategies - these are used mostly for development purposes
