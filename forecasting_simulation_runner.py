@@ -42,7 +42,7 @@ start = args.start_delivery
 end = args.end_delivery
 processes = int(args.processes)
 
-PROBAB_APPROACHES = ["hist_insample", "weather_scenarios"]
+PROBAB_APPROACHES = ["weather_scenarios"]
 
 WASSERSTEIN_STOPPING_CRIT = [
     True,

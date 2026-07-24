@@ -44,14 +44,14 @@ start = args.start_delivery
 sys.stderr = open(
     os.path.join(
         LOGS_DIR,
-        f"BENCHMARK_SIMU_ERR_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt"
+        f"BENCHMARK_SIMU_ERR_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt",
     ),
     "w",
 )
 sys.stdout = open(
     os.path.join(
         LOGS_DIR,
-        f"BENCHMARK_SIMU_LOG_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt"
+        f"BENCHMARK_SIMU_LOG_{start}_{args.end_delivery}_benchmark_{args.calibration_window_len}.txt",
     ),
     "w",
 )
@@ -78,8 +78,8 @@ for delivery_time in range(int(start), int(args.end_delivery)):
             + ["--required_scenarios", str(required_scenarios)]
             * (required_scenarios is not None)
             + [
-                    "--special_results_directory",
-                    str(args.special_results_directory),
+                "--special_results_directory",
+                str(args.special_results_directory),
             ]
             * (args.special_results_directory is not None)
         )
