@@ -7,6 +7,20 @@ from Trading_strategies.strategies_utils import (
 
 
 def seller_initial_trading_plan(y_actual, argmax_forecast):
+    """Initialize the seller strategy from the forecast price maximum.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory.
+    argmax_forecast : int
+        Index of the forecast price maximum.
+
+    Returns
+    -------
+    tuple
+        Planned entry index and realized baseline, best, and worst profits.
+    """
     planned_entry = argmax_forecast
 
     basic_profit = y_actual[planned_entry]
@@ -18,6 +32,21 @@ def seller_initial_trading_plan(y_actual, argmax_forecast):
 
 
 def speculative_initial_trading_plan(y_actual, argmin_forecast, argmax_forecast):
+    """Initialize a long or short speculative trading plan from forecast extrema.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory.
+    argmin_forecast, argmax_forecast : int
+        Indices of the forecast minimum and maximum.
+
+    Returns
+    -------
+    tuple
+        Initial direction, entry and exit indices, and realized baseline,
+        best-case, and worst-case profits.
+    """
     # initial trading results based on model forecast
     if argmin_forecast > argmax_forecast:
         planned_direction = -1
@@ -51,6 +80,24 @@ def speculative_initial_trading_plan(y_actual, argmin_forecast, argmax_forecast)
 
 
 def get_weights_and_trust_threshold(y_actual, y_forecast, t, config):
+    """Compute scenario weights and trust threshold from observations up to time t.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory.
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories, with scenarios in columns.
+    t : int
+        Current trajectory index.
+    config
+        Strategy configuration defining weighting and threshold parameters.
+
+    Returns
+    -------
+    tuple
+        Scenario weights and current trust threshold.
+    """
     # compute weights using data observed up to t (inclusive)
     price_so_far = y_actual[: t + 1]
     forecast_so_far = y_forecast[: t + 1, :]
@@ -72,6 +119,21 @@ def get_weights_and_trust_threshold(y_actual, y_forecast, t, config):
 
 
 def speculative_desired_trading_plan(cond_min_forecast, cond_max_forecast, t):
+    """Determine the desired long or short plan from conditional forecast extrema.
+
+    Parameters
+    ----------
+    cond_min_forecast, cond_max_forecast : np.ndarray
+        Conditional lower and upper forecast trajectories for times after t.
+    t : int
+        Current trajectory index.
+
+    Returns
+    -------
+    tuple
+        Desired direction, entry and exit indices, and absolute indices of the
+        conditional minimum and maximum.
+    """
     # map back to absolute indices
     rel_argmax = int(np.argmax(cond_max_forecast))
     rel_argmin = int(np.argmin(cond_min_forecast))
@@ -94,6 +156,16 @@ def speculative_desired_trading_plan(cond_min_forecast, cond_max_forecast, t):
 def seller_strategy_correction(
     adjusted_forecast, planned_entry, y_actual, trust_threshold, profit, played, t
 ):
+    """Update the seller's planned execution time using the adjusted forecast.
+
+    The planned entry is shifted when the new forecast maximum improves on the
+    existing plan by more than the trust threshold.
+
+    Returns
+    -------
+    tuple
+        Break flag, current profit, updated entry index, and action indicator.
+    """
     # map back to absolute indices
     rel_argmax = int(np.argmax(adjusted_forecast))
     new_argmax = rel_argmax + (t + 1)
@@ -146,7 +218,19 @@ def speculative_strategy_correction(
     played,
     t,
 ):
+    """Update the speculative trading plan and manage an open position.
 
+    Before entry, replaces the current plan when the desired plan offers a
+    sufficient forecast improvement. After entry, evaluates early exit or
+    postponement of the planned exit using the current forecast extrema and
+    trust threshold.
+
+    Returns
+    -------
+    tuple
+        Break flag, profit, exit index, updated plan, entry price, action
+        indicator, committed direction, and position state.
+    """
     # we shift the entering of position if we see more profit from changing it
     if (
         desired_exit != desired_entry
@@ -191,7 +275,7 @@ def speculative_strategy_correction(
                 played,
                 direction,
                 in_position,
-            )  # returning True as a first element tells the code above to break the loop over trajectory steps
+            )
 
         # if planned exit is now -> check whether it is worth waiting and if not exit, otherwise update the exit time
         if exit_index == t:
@@ -218,7 +302,7 @@ def speculative_strategy_correction(
                     played,
                     direction,
                     in_position,
-                )  # returning True as a first element tells the code above to break the loop over trajectory steps
+                )
             else:
                 if direction == -1:
                     exit_index = new_argmin

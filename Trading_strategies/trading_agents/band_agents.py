@@ -20,6 +20,26 @@ from Trading_strategies.trading_agents.agents_utils import (  # all of the inter
 
 @dataclass(kw_only=True)
 class BaseBandConfig:
+    """Configuration shared by one- and two-sided band strategies.
+
+    Parameters
+    ----------
+    band_type : str
+        Risk attitude determining which simultaneous band is used.
+    scp : float
+        Simultaneous coverage probability of the forecast band.
+    p : float
+        Kernel shape parameter used for dynamic scenario weighting.
+    lambda_ : float
+        Exponential time-decay parameter for past forecast errors.
+    trust_threshold_method : str
+        Method used to calculate the strategy adaptation threshold.
+    weights_method : str
+        Method used to dynamically weight forecast scenarios.
+    dev_plots : bool
+        Whether to generate diagnostic strategy plots.
+    """
+
     band_type: str
     scp: float
     p: float
@@ -31,11 +51,15 @@ class BaseBandConfig:
 
 @dataclass(kw_only=True)
 class OneSidedBandsConfig(BaseBandConfig):
+    """Configuration for the one-sided seller band strategy."""
+
     pass
 
 
 @dataclass(kw_only=True)
 class TwoSidedBandsConfig(BaseBandConfig):
+    """Configuration for the two-sided speculative band strategy."""
+
     pass
 
 
@@ -44,6 +68,29 @@ def one_sided_bands_strategy(
     y_forecast,
     config: OneSidedBandsConfig,
 ):
+    """Simulate the dynamically updated band strategy for a seller.
+
+    The initial selling time is selected from a simultaneous forecast band.
+    As prices are observed, scenario weights and the conditional band are
+    updated and the planned sale is changed when the expected improvement
+    exceeds the trust threshold. An unsold position is settled at the final
+    trajectory price.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory of shape (T,).
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories of shape (T, N).
+    config : OneSidedBandsConfig
+        Band construction, weighting, and adaptation parameters.
+
+    Returns
+    -------
+    tuple
+        Dynamic profit, static strategy profit, action indicator, and
+        best- and worst-case realized profits.
+    """
     band_type = config.band_type
     scp = config.scp
     dev_plots = config.dev_plots
@@ -118,6 +165,29 @@ def one_sided_bands_strategy(
 
 
 def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
+    """Simulate the dynamically updated band strategy for a spread trader.
+
+    The strategy initially plans a long or short trade from extrema of the
+    simultaneous forecast bands. As prices are observed, scenario weights
+    and conditional bands are updated, allowing the entry plan to change
+    before execution and the exit to occur early or be postponed according
+    to the trust threshold.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory of shape (T,).
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories of shape (T, N).
+    config : TwoSidedBandsConfig
+        Band construction, weighting, and adaptation parameters.
+
+    Returns
+    -------
+    tuple
+        Dynamic profit, static strategy profit, action indicator, and
+        best- and worst-case realized profits.
+    """
     band_type = config.band_type
     scp = config.scp
     dev_plots = config.dev_plots

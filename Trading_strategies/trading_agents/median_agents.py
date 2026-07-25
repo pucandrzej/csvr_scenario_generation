@@ -21,6 +21,22 @@ from Trading_strategies.strategies_utils import (
 
 @dataclass(kw_only=True)
 class BaseMedianConfig:
+    """Configuration shared by one- and two-sided median strategies.
+
+    Parameters
+    ----------
+    p : float
+        Kernel shape parameter used for dynamic scenario weighting.
+    lambda_ : float
+        Exponential time-decay parameter for past forecast errors.
+    trust_threshold_method : str
+        Method used to calculate the strategy adaptation threshold.
+    weights_method : str
+        Method used to dynamically weight forecast scenarios.
+    dev_plots : bool
+        Whether to generate diagnostic strategy plots.
+    """
+
     p: float
     lambda_: float = 0.25
     trust_threshold_method: str = "3sigma"
@@ -30,11 +46,15 @@ class BaseMedianConfig:
 
 @dataclass(kw_only=True)
 class OneSidedMedianConfig(BaseMedianConfig):
+    """Configuration for the one-sided seller median strategy."""
+
     pass
 
 
 @dataclass(kw_only=True)
 class TwoSidedMedianConfig(BaseMedianConfig):
+    """Configuration for the two-sided speculative median strategy."""
+
     pass
 
 
@@ -43,17 +63,28 @@ def one_sided_median_trading_strategy(
     y_forecast: np.ndarray,
     config: OneSidedMedianConfig,
 ):
-    """
-    Minimal dynamic evolution-tracking.
-    - initial entry/exit from unconditional median across paths
-    - at each time t, compute path weights based on observed history
-    - compute weighted medians for future times and replan entry/exit
-    - simulate immediate fills: enter when planned_entry <= t, exit when planned_exit <= t
-    - if direction flips while in position, close and flip immediately
-    - returns profit (single number).
+    """Simulate the dynamically updated median strategy for a seller.
 
-    y_actual: shape (T,)
-    y_forecast: shape (T, Npaths)
+    The initial selling time is selected from the unconditional ensemble
+    median. As prices are observed, scenario weights and future weighted
+    medians are updated, and the planned sale is changed when the expected
+    improvement exceeds the trust threshold. An unsold position is settled
+    at the final trajectory price.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory of shape (T,).
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories of shape (T, N).
+    config : OneSidedMedianConfig
+        Scenario weighting and strategy adaptation parameters.
+
+    Returns
+    -------
+    tuple
+        Dynamic profit, static strategy profit, action indicator, and
+        best- and worst-case realized profits.
     """
 
     dev_plots = config.dev_plots
@@ -129,17 +160,28 @@ def two_sided_median_trading_strategy(
     y_forecast: np.ndarray,
     config: TwoSidedMedianConfig,
 ):
-    """
-    Minimal dynamic evolution-tracking.
-    - initial entry/exit from unconditional median across paths
-    - at each time t, compute path weights based on observed history
-    - compute weighted medians for future times and replan entry/exit
-    - simulate immediate fills: enter when planned_entry <= t, exit when planned_exit <= t
-    - if direction flips while in position, close and flip immediately
-    - returns profit (single number).
+    """Simulate the dynamically updated median strategy for a spread trader.
 
-    y_actual: shape (T,)
-    y_forecast: shape (T, Npaths)
+    The initial long or short trade is determined from the extrema of the
+    unconditional ensemble median. As prices are observed, scenario weights
+    and future weighted medians are updated, allowing the entry plan to
+    change before execution and the exit to occur early or be postponed
+    according to the trust threshold.
+
+    Parameters
+    ----------
+    y_actual : np.ndarray
+        Realized price trajectory of shape (T,).
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories of shape (T, N).
+    config : TwoSidedMedianConfig
+        Scenario weighting and strategy adaptation parameters.
+
+    Returns
+    -------
+    tuple
+        Dynamic profit, static strategy profit, action indicator, and
+        best- and worst-case realized profits.
     """
 
     p = config.p
@@ -185,22 +227,9 @@ def two_sided_median_trading_strategy(
 
     # observe t=0..T-1 and adapt plan if a more profitable buy/sell points are detected
     for t in range(T):
-        # compute weights using data observed up to t (inclusive)
-        price_so_far = y_actual[: t + 1]
-        forecast_so_far = y_forecast[: t + 1, :]
-
-        residuals = np.median(forecast_so_far, axis=1) - price_so_far
-        trust_threshold, nonzero_mae = get_trust_threshold(
-            residuals, trust_threshold_method
-        )
-        w = compute_weights(
-            forecast_so_far,
-            price_so_far,
-            nonzero_mae,
-            p,
-            lambda_,
-            weights_method,
-        )
+        w, trust_threshold = get_weights_and_trust_threshold(
+                    y_actual.copy(), y_forecast.copy(), t, config
+                )
 
         # build conditional medians for future times > t
         future_count = T - (t + 1)

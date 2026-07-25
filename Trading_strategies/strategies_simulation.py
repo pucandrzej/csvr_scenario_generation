@@ -81,6 +81,27 @@ def run_configurable_strategy(
     y_forecast,
     strategy_kwargs,
 ):
+    """Run a registered trading strategy with the requested configuration.
+
+    Parameters
+    ----------
+    strategy_name : str
+        Strategy family, currently ``"bands"`` or ``"median"``.
+    one_sided : bool
+        If True, run the seller strategy; otherwise run the spread-trading strategy.
+    y_actual : np.ndarray
+        Realized price trajectory of shape (T,).
+    y_forecast : np.ndarray
+        Ensemble forecast trajectories of shape (T, N).
+    strategy_kwargs : dict
+        Parameters used to instantiate the strategy-specific configuration.
+
+    Returns
+    -------
+    tuple
+        Strategy profit, static baseline profit, action indicator, and
+        best- and worst-case realized profits.
+    """
     strategy = STRATEGY_REGISTRY[(strategy_name, one_sided)]
 
     config = strategy["config"](**strategy_kwargs)
@@ -192,7 +213,24 @@ else:
 
 
 def iterate_over_probab_results_and_prepare_measure(inp):
-    """Use the predefined parameters and trading agent function and iterate over given period."""
+    """Evaluate one strategy configuration for all days of one delivery period.
+
+    Daily forecast files are processed chronologically. For each day, the
+    realized trajectory and ensemble forecasts are loaded and passed to the
+    selected trading strategy or forecast-quality measure.
+
+    Parameters
+    ----------
+    inp : sequence
+        Strategy function, delivery directory, forecast column prefix, and
+        strategy hyperparameters: SCP, p, lambda, trust-threshold method,
+        and weighting method.
+
+    Returns
+    -------
+    list
+        Per-day strategy or measure outputs for the given delivery period.
+    """
     measure_func = inp[0]
     dir_name = inp[1]
     column_name = inp[2]
@@ -396,7 +434,6 @@ if __name__ == "__main__":
 
         for (k, arr), params in zip(results.items(), results.keys()):
             stability_measures[params] = []
-            # sum over axis=0, take last index along axis=-1, then cumsum
             y = np.cumsum(np.sum(arr, axis=0)[:, -1, :], axis=0) / 1000
 
             measure_per_day = arr[:, :, 0, 0].T.reshape(-1)
