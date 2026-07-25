@@ -12,8 +12,6 @@ from Trading_strategies.trading_agents.agents_utils import (  # all of the inter
 )
 
 from Trading_strategies.strategies_utils import (
-    get_trust_threshold,
-    compute_weights,
     weighted_median,
     add_curve,
 )
@@ -139,7 +137,7 @@ def one_sided_median_trading_strategy(
                 "red",
             )
 
-        break_condition, profit, played = seller_strategy_correction(
+        break_condition, profit, planned_entry, played = seller_strategy_correction(
             cond_medians.copy(), planned_entry, y_actual.copy(), trust_threshold, profit, played, t
         )
 
@@ -184,10 +182,6 @@ def two_sided_median_trading_strategy(
         best- and worst-case realized profits.
     """
 
-    p = config.p
-    lambda_ = config.lambda_
-    trust_threshold_method = config.trust_threshold_method
-    weights_method = config.weights_method
     dev_plots = config.dev_plots
 
     if dev_plots:

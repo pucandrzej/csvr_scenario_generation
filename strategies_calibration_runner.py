@@ -36,14 +36,13 @@ for model in ["median", "bands"]:
         bands_types = ["risk_seeking"]
 
     for band_type in bands_types:
-        for direction, one_sided in zip([-1, 0], [True, False]):
+        for one_sided in [True, False]:
             joblist.append(
                 [
                     sys.executable,
                     "-m",
                     "Trading_strategies.strategies_simulation",
                 ]
-                + ["--direction", str(direction)] * (direction is not None)
                 + ["--one_sided"] * one_sided
                 + ["--model", model]
                 + ["--processes", args.processes]

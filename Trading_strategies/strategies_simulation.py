@@ -17,6 +17,7 @@ from config.paths import (
     CALIBRATION_STRATEGIES_MEASURES_DIR,
     TEST_STRATEGIES_MEASURES_DIR,
     MODEL_RESULTS_DIR,
+    BENCHMARK_RESULTS_DIR,
     PAPER_FIGURES_DIR,
 )
 from .strategies_utils import (
@@ -239,20 +240,21 @@ def iterate_over_probab_results_and_prepare_measure(inp):
     lambda_ = inp[5]
     trust_threshold_method = inp[6]
     weights_method = inp[7]
+    results_dir = inp[8]
 
     measure_values_delivery = []
 
     for counter, daily_file in enumerate(
         sorted(
             f_name
-            for f_name in os.listdir(os.path.join(MODEL_RESULTS_DIR, dir_name))
+            for f_name in os.listdir(os.path.join(results_dir, dir_name))
             if f_name.startswith(f"{args.run_type}_")
         )
     ):
         measure_values_day = []
 
         df = pd.read_csv(
-            os.path.join(MODEL_RESULTS_DIR, dir_name, daily_file), index_col=0
+            os.path.join(results_dir, dir_name, daily_file), index_col=0
         )
         actual = df["actual"].values
         if args.model in ["wca", "pwca"]:
@@ -378,8 +380,14 @@ if __name__ == "__main__":
                 flush=True,
             )
 
+            results_dir = (
+                BENCHMARK_RESULTS_DIR
+                if column_name == "benchmark_prediction"
+                else MODEL_RESULTS_DIR
+            )
+
             delivery_directories = sorted(
-                (d for d in os.listdir(MODEL_RESULTS_DIR) if d.endswith(model)),
+                (d for d in os.listdir(results_dir) if d.endswith(model)),
                 key=lambda d: int(d.split("_")[3]),
             )
 
@@ -399,6 +407,7 @@ if __name__ == "__main__":
                         parameter_tuple[2],
                         parameter_tuple[3],
                         parameter_tuple[4],
+                        results_dir,
                     ]
                     for delivery_dir in delivery_directories
                 ]

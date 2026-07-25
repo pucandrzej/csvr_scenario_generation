@@ -26,13 +26,11 @@ sys.stderr = sys.stdout
 def parse_file_flags(filename):
     flags = {}
 
-    if "False_0" in filename:
+    if "_False_" in filename:
         flags["one_sided"] = False
-        flags["direction"] = None
 
-    elif "True_-1" in filename:
+    elif "_True_" in filename:
         flags["one_sided"] = True
-        flags["direction"] = -1
 
     if "_median" in filename:
         flags["model"] = "median"
@@ -105,7 +103,6 @@ for file in os.listdir(CALIBRATION_STRATEGIES_MEASURES_DIR):
 
             if flags["one_sided"]:
                 cmd.append("--one_sided")
-                cmd.extend(["--direction", str(flags["direction"])])
 
             if flags["model"] == "bands" and flags["band_type"]:
                 cmd.extend(["--band_type", flags["band_type"]])

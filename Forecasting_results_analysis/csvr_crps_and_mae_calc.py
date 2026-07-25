@@ -47,6 +47,15 @@ def get_pinball_from_csvr(inp):
         f"MAE_{probab_approach}_{model_name}_{delivery}_{wasserstein_stopping_crit}_{scenarios_sampling_method}_{required_scenarios}.csv",
     )
 
+    # Skip configurations that have already been computed
+    if os.path.exists(pinball_path) and os.path.exists(mae_path):
+        print(
+            f"Skipping existing results: {probab_approach}, {model_name}, "
+            f"delivery={delivery}, wasserstein={wasserstein_stopping_crit}, "
+            f"sampling={scenarios_sampling_method}, scenarios={required_scenarios}"
+        )
+        return None
+
     if model_name == "benchmark":
         results_subdir = f"{validation_window_start}_{validation_window_end}_364_{delivery}_31_{trade_time}_____{required_scenarios}____"
     else:

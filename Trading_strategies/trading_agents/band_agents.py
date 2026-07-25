@@ -149,7 +149,7 @@ def one_sided_bands_strategy(
                 add_curve(fig, x, y_actual, "Actual", "green")
             add_curve(fig, x[T - len(cond_band) :], cond_band, f"Band {t}", "red")
 
-        break_condition, profit, played = seller_strategy_correction(
+        break_condition, profit, planned_entry, played = seller_strategy_correction(
             cond_band, planned_entry, y_actual, trust_threshold, profit, played, t
         )
 

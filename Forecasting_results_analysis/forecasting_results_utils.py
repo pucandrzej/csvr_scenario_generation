@@ -15,7 +15,7 @@ def timing(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print(f"⏱️ Function '{func.__name__}' executed in {end - start:.2f} seconds")
+        print(f"Function '{func.__name__}' executed in {end - start:.2f} seconds")
         return result
 
     return wrapper_timing
