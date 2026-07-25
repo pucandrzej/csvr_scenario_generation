@@ -142,12 +142,7 @@ parser.add_argument(
     default=None,
     help="Method of calculating the weights: kernel or mae.",
 )
-parser.add_argument(
-    "--direction",
-    type=int,
-    default=0,
-    help="For one sided strategy we need to specify the direction.",
-)
+
 parser.add_argument(
     "--one_sided",
     default=False,
@@ -190,6 +185,7 @@ if args.underlying_model_column is None:
         "MULTI_prediction",
         "benchmark_prediction",
         "MULTI_prediction",
+        "MULTI_prediction"
     ]
 else:
     columns_names = [args.underlying_model_column]
@@ -209,22 +205,18 @@ def iterate_over_probab_results_and_prepare_measure(inp):
     measure_values_delivery = []
 
     for counter, daily_file in enumerate(
-        [
+        sorted(
             f_name
             for f_name in os.listdir(os.path.join(MODEL_RESULTS_DIR, dir_name))
             if f_name.startswith(f"{args.run_type}_")
-        ]
+        )
     ):
         measure_values_day = []
 
         df = pd.read_csv(
             os.path.join(MODEL_RESULTS_DIR, dir_name, daily_file), index_col=0
         )
-        try:
-            actual = df["actual"].values
-        except:
-            breakpoint()
-            pass
+        actual = df["actual"].values
         if args.model in ["wca", "pwca"]:
             naive = df["naive"].values
         fore = df[
@@ -252,9 +244,6 @@ def iterate_over_probab_results_and_prepare_measure(inp):
                     }
                 )
 
-            if args.one_sided:
-                strategy_kwargs["direction"] = args.direction
-
             measure_values_day.append(
                 run_configurable_strategy(
                     args.model,
@@ -266,7 +255,7 @@ def iterate_over_probab_results_and_prepare_measure(inp):
             )
         elif args.model in ["naive_1", "naive_30"]:
             measure_values_day.append(
-                measure_func(actual, args.direction, args.one_sided)
+                measure_func(actual, args.one_sided)
             )
         elif args.model == "wca":
             measure_values_day.append(measure_func(actual, fore, naive))
@@ -342,7 +331,7 @@ if __name__ == "__main__":
     elif args.model == "pwca":
         func = probabilistic_weighted_classification_accuracy
 
-    calibration_pickle_name = f"results_gridsearch_{args.one_sided}_{args.direction}_{args.model}_{args.band_type}_{datetime.now().strftime('%Y-%m-%d %H;%M;%S')}.pkl"
+    calibration_pickle_name = f"results_gridsearch_{args.one_sided}_{args.model}_{args.band_type}_{datetime.now().strftime('%Y-%m-%d %H;%M;%S')}.pkl"
 
     if args.calibration_pickle_name is None:
         for model, column_name in zip(models, columns_names):
@@ -351,9 +340,10 @@ if __name__ == "__main__":
                 flush=True,
             )
 
-            delivery_directories = [
-                d for d in os.listdir(MODEL_RESULTS_DIR) if d.endswith(model)
-            ]
+            delivery_directories = sorted(
+                (d for d in os.listdir(MODEL_RESULTS_DIR) if d.endswith(model)),
+                key=lambda d: int(d.split("_")[3]),
+            )
 
             for parameter_tuple in grid:
                 print(
@@ -593,7 +583,7 @@ if __name__ == "__main__":
             fig.write_html(
                 os.path.join(
                     PAPER_FIGURES_DIR,
-                    f"strategies_{args.run_type}_{args.one_sided}_{args.direction}_{args.model}.html",
+                    f"strategies_{args.run_type}_{args.one_sided}_{args.model}.html",
                 )
             )
             if DEV_PLOTS:
@@ -634,22 +624,15 @@ if __name__ == "__main__":
             ],
         )
 
-        if (
-            float(args.direction) == 0 or float(args.direction) == -1
-        ):  # RATIO if we maximize the profit and minimize risk
-            df["Sortino_ratio"] = df["profit"] / df["std_minus"]
-            df = df.sort_values("Sortino_ratio", ascending=False)
-        elif (
-            float(args.direction) == 1
-        ):  # PRODUCT if we minimize the profit and minimize risk
-            df["Sortino_product"] = df["profit"] * df["std_minus"]
-            df = df.sort_values("Sortino_product", ascending=True)
+        # RATIO as we maximize the profit and minimize risk
+        df["Sortino_ratio"] = df["profit"] / df["std_minus"]
+        df = df.sort_values("Sortino_ratio", ascending=False)
 
         if args.run_type == "calibration":
             df.to_csv(
                 os.path.join(
                     CALIBRATION_STRATEGIES_MEASURES_DIR,
-                    f"calibration_trading_strategy_measures_{args.one_sided}_{args.direction}_{args.model}_{args.band_type}.csv",
+                    f"calibration_trading_strategy_measures_{args.one_sided}_{args.model}_{args.band_type}.csv",
                 )
             )
         else:
@@ -657,7 +640,7 @@ if __name__ == "__main__":
                 os.path.join(
                     TEST_STRATEGIES_MEASURES_DIR,
                     args.test_subdir,
-                    f"test_trading_strategy_measures_{args.underlying_model}_{args.underlying_model_column}_{args.one_sided}_{args.direction}_{args.model}_{args.band_type}.csv",
+                    f"test_trading_strategy_measures_{args.underlying_model}_{args.underlying_model_column}_{args.one_sided}_{args.model}_{args.band_type}.csv",
                 )
             )
             print(df.to_string())

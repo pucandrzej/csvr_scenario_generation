@@ -103,7 +103,7 @@ def one_sided_bands_strategy(
             add_curve(fig, x[T - len(cond_band) :], cond_band, f"Band {t}", "red")
 
         break_condition, profit, played = seller_strategy_correction(
-            cond_band, planned_entry, y_actual, trust_threshold, t
+            cond_band, planned_entry, y_actual, trust_threshold, profit, played, t
         )
 
         if break_condition:
@@ -155,6 +155,7 @@ def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
 
     # entry price and index
     entry_price = None
+    exit_index = None
 
     profit = 0
 
@@ -251,6 +252,7 @@ def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
         (
             break_condition,
             profit,
+            exit_index,
             planned_entry,
             planned_exit,
             planned_direction,
@@ -268,6 +270,7 @@ def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
             trust_threshold,
             planned_entry,
             planned_exit,
+            exit_index,
             planned_direction,
             planned_entry_profit,
             direction,
@@ -277,6 +280,7 @@ def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
             new_argmin,
             new_argmax,
             profit,
+            played,
             t,
         )
 

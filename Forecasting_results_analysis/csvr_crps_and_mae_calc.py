@@ -12,7 +12,7 @@ from config.test_calibration_validation import (
     validation_window_end,
 )
 from config.paths import BENCHMARK_RESULTS_DIR, MODEL_RESULTS_DIR, MAE_CRPS_RESULTS_DIR
-from config.forecasting_simulation_config import last_trade_time_in_path_delta
+from config.forecasting_simulation_config import last_trade_time_in_path_delta, deliveries_no
 
 probab_approaches = ["weather_scenarios", "hist_insample", "benchmark"]
 
@@ -142,7 +142,7 @@ def get_pinball_from_csvr(inp):
 
 if __name__ == "__main__":
     model_names = ["CHAIN_prediction", "MULTI_prediction"]
-    deliveries = range(96)
+    deliveries = range(deliveries_no)
 
     inputlist = []
 

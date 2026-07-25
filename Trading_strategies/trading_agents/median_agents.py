@@ -30,7 +30,7 @@ class BaseMedianConfig:
 
 @dataclass(kw_only=True)
 class OneSidedMedianConfig(BaseMedianConfig):
-    direction: int
+    pass
 
 
 @dataclass(kw_only=True)
@@ -109,7 +109,7 @@ def one_sided_median_trading_strategy(
             )
 
         break_condition, profit, played = seller_strategy_correction(
-            cond_medians.copy(), planned_entry, y_actual.copy(), trust_threshold, t
+            cond_medians.copy(), planned_entry, y_actual.copy(), trust_threshold, profit, played, t
         )
 
         if break_condition:
@@ -179,6 +179,7 @@ def two_sided_median_trading_strategy(
 
     # entry price and index
     entry_price = None
+    exit_index = None
 
     profit = 0
 
@@ -257,6 +258,7 @@ def two_sided_median_trading_strategy(
         (
             break_condition,
             profit,
+            exit_index,
             planned_entry,
             planned_exit,
             planned_direction,
@@ -274,6 +276,7 @@ def two_sided_median_trading_strategy(
             trust_threshold,
             planned_entry,
             planned_exit,
+            exit_index,
             planned_direction,
             planned_entry_profit,
             direction,
@@ -283,6 +286,7 @@ def two_sided_median_trading_strategy(
             new_argmin,
             new_argmax,
             profit,
+            played,
             t,
         )
 

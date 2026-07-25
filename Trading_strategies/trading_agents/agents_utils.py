@@ -92,7 +92,7 @@ def speculative_desired_trading_plan(cond_min_forecast, cond_max_forecast, t):
 
 
 def seller_strategy_correction(
-    adjusted_forecast, planned_entry, y_actual, trust_threshold, t
+    adjusted_forecast, planned_entry, y_actual, trust_threshold, profit, played, t
 ):
     # map back to absolute indices
     rel_argmax = int(np.argmax(adjusted_forecast))
@@ -133,6 +133,7 @@ def speculative_strategy_correction(
     trust_threshold,
     planned_entry,
     planned_exit,
+    exit_index,
     planned_direction,
     planned_entry_profit,
     direction,
@@ -142,8 +143,10 @@ def speculative_strategy_correction(
     new_argmin,
     new_argmax,
     profit,
+    played,
     t,
 ):
+
     # we shift the entering of position if we see more profit from changing it
     if (
         desired_exit != desired_entry
@@ -180,6 +183,7 @@ def speculative_strategy_correction(
             return (
                 True,
                 profit,
+                exit_index,
                 planned_entry,
                 planned_exit,
                 planned_direction,
