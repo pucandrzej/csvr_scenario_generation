@@ -95,48 +95,6 @@ def weighted_median(values, weights):
         interpolated_value = (nominator_1 + nominator_2) / denominator
         return interpolated_value
 
-
-def weighted_quantile(values, weights, q):
-    """
-    Compute a weighted quantile using the weighted-median interpolation convention.
-
-    Parameters
-    ----------
-    values : array-like
-        Data values.
-    weights : array-like
-        Corresponding weights.
-    q : float
-        Quantile level in [0, 1].
-
-    Returns
-    -------
-    float
-        Weighted q-th quantile.
-    """
-    if q < 0 or q > 1:
-        raise ValueError("q must be between 0 and 1")
-
-    values = np.asarray(values)
-    weights = np.asarray(weights)
-    i = np.argsort(values)
-    v, w = values[i], weights[i]
-    c = np.cumsum(w)
-    c = c / c[-1]
-    idx = min([np.searchsorted(c, q), len(c) - 1])
-
-    if c[idx] == q or idx == 0:
-        return v[idx]
-    else:
-        c1, c2 = c[idx - 1], c[idx]
-        v1, v2 = v[idx - 1], v[idx]
-        denominator = c2 - c1
-        nominator_1 = v1 * (c2 - q)
-        nominator_2 = v2 * (q - c1)
-        interpolated_value = (nominator_1 + nominator_2) / denominator
-        return interpolated_value
-
-
 def _calc_band(M, Y, idx, band_type):
     """
     Compute an upper or lower prediction band for a given index.
@@ -311,3 +269,32 @@ def _calc_weighted_band(Y, idx, band_type):
     elif band_type == "lower":
         B = np.min(Y[:, : idx + 1], axis=1)
     return B
+
+def batch_weighted_quantiles(values, weights, qs):
+    """Vectorized weighted quantiles — one sort, many q's.
+    Matches weighted_median's interpolation convention exactly.
+    Assumes weights already sum to 1 (enforced by _check_weights
+    at the call site); does not renormalize.
+    """
+    values = np.asarray(values)
+    weights = np.asarray(weights)
+    qs = np.asarray(qs)
+
+    i = np.argsort(values)
+    v, w = values[i], weights[i]
+    c = np.cumsum(w)
+
+    idx = np.searchsorted(c, qs)
+    idx = np.minimum(idx, len(c) - 1)
+    at_boundary = (c[idx] == qs) | (idx == 0)
+
+    result = np.empty(len(qs), dtype=float)
+    result[at_boundary] = v[idx[at_boundary]]
+
+    interp = ~at_boundary
+    idx_i = idx[interp]
+    q_i = qs[interp]
+    c1, c2 = c[idx_i - 1], c[idx_i]
+    v1, v2 = v[idx_i - 1], v[idx_i]
+    result[interp] = (v1 * (c2 - q_i) + v2 * (q_i - c1)) / (c2 - c1)
+    return result

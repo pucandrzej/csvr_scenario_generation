@@ -30,23 +30,30 @@ from Forecasting_results_analysis.forecasting_results_utils import (
 from Trading_strategies.strategies_utils import (
     compute_weights,
     get_trust_threshold,
-    weighted_median,
-    weighted_quantile,
+    batch_weighted_quantiles,
 )
 
 EXPECTED_N_DELIVERIES = deliveries_no
 EXPECTED_DELIVERY_INDICES = list(range(deliveries_no))  # 0..95
 EXPECTED_DAYS_PER_DELIVERY = validation_window_length
+TAUS = np.linspace(0.01, 0.99, 99)
+METHOD_NAMES = {
+    "raw": "Raw ensemble",
+    "mae": "MAE weighting",
+    "kernel": "Kernel weighting",
+}
+ALL_Q = np.union1d(TAUS, [0.5])          # sorted union; includes median
+_MEDIAN_POS = int(np.searchsorted(ALL_Q, 0.5))
+_TAU_POS = np.searchsorted(ALL_Q, TAUS)
 
-
-def _validate_completeness(tasks, delivery_index, daily_file, case_index, max_cases):
+def _validate_completeness(tasks, delivery_index, daily_file):
     """Raise if the task set doesn't cover the full expected grid of
     96 deliveries (indices 0-95) x 366 daily files each.
 
-    Skipped when any manual subsetting flag is active, since those
+    Skipped when a manual subsetting flag is active, since those
     deliberately produce a partial task set.
     """
-    if any(x is not None for x in (delivery_index, daily_file, case_index, max_cases)):
+    if delivery_index is not None or daily_file is not None:
         return
 
     if len(tasks) != EXPECTED_N_DELIVERIES:
@@ -77,14 +84,6 @@ def _validate_completeness(tasks, delivery_index, daily_file, case_index, max_ca
             f"{len(bad)} deliveries have wrong file count "
             f"(expected {EXPECTED_DAYS_PER_DELIVERY} each): {bad}"
         )
-
-
-TAUS = [0.1, 0.5, 0.9] #np.linspace(0.01, 0.99, 99)
-METHOD_NAMES = {
-    "raw": "Raw ensemble",
-    "mae": "MAE weighting",
-    "kernel": "Kernel weighting",
-}
 
 
 def _default_column(model_setting):
@@ -160,8 +159,6 @@ def _build_delivery_tasks(
     run_type,
     delivery_index=None,
     daily_file=None,
-    case_index=None,
-    max_cases=None,
 ):
     """Build one independent worker task per delivery directory."""
     results_dir = _results_dir(column_name)
@@ -171,8 +168,6 @@ def _build_delivery_tasks(
     )
 
     selected = []
-    ordered_case_index = 0
-    selected_cases = 0
 
     for dir_name in delivery_directories:
         current_delivery = int(dir_name.split("_")[3])
@@ -184,30 +179,21 @@ def _build_delivery_tasks(
             f for f in os.listdir(os.path.join(results_dir, dir_name))
             if f.startswith(f"{run_type}_")
         ):
-            if case_index is not None and ordered_case_index != case_index:
-                ordered_case_index += 1
-                continue
-            ordered_case_index += 1
-
             if daily_file is not None and filename != daily_file:
                 continue
 
             daily_files.append(filename)
-            selected_cases += 1
-            if max_cases is not None and selected_cases >= max_cases:
-                break
 
         if daily_files:
             selected.append(
                 (results_dir, dir_name, daily_files, column_name, calibration_params)
             )
 
-        if (case_index is not None and selected_cases) or (
-            max_cases is not None and selected_cases >= max_cases
-        ):
+        if delivery_index is not None and current_delivery == delivery_index:
             break
 
     return selected
+
 
 def _dynamic_weights(observed_actual, observed_forecast, params, weights_method):
     residuals = np.median(observed_forecast, axis=1) - observed_actual
@@ -293,12 +279,14 @@ def _evaluate_delivery(task):
             for actual, forecasts in zip(future_actual, future_forecast):
                 for method, weights in weights_by_method.items():
                     acc = losses[t0][method]
-                    median = weighted_median(forecasts, weights)
+
+                    q_hats = batch_weighted_quantiles(forecasts, weights, ALL_Q)
+
+                    median = q_hats[_MEDIAN_POS]
                     acc["mae_sum"] += abs(actual - median)
                     acc["mae_count"] += 1
 
-                    for tau in TAUS:
-                        q_hat = weighted_quantile(forecasts, weights, tau)
+                    for tau, q_hat in zip(TAUS, q_hats[_TAU_POS]):
                         acc["crps_sum"] += analysis_pinball_loss(actual, q_hat, tau)
                         acc["crps_count"] += 1
 
@@ -327,8 +315,6 @@ def calculate_diagnostics(
     processes=1,
     delivery_index=None,
     daily_file=None,
-    case_index=None,
-    max_cases=None,
 ):
     """Evaluate diagnostics in parallel over delivery directories."""
     tasks = _build_delivery_tasks(
@@ -338,18 +324,15 @@ def calculate_diagnostics(
         run_type,
         delivery_index=delivery_index,
         daily_file=daily_file,
-        case_index=case_index,
-        max_cases=max_cases,
     )
     if not tasks:
         raise ValueError(
             f"No {run_type} forecast cases found for "
             f"model_setting={model_setting}, model={column_name}, "
-            f"delivery_index={delivery_index}, daily_file={daily_file}, "
-            f"case_index={case_index}"
+            f"delivery_index={delivery_index}, daily_file={daily_file}"
         )
 
-    _validate_completeness(tasks, delivery_index, daily_file, case_index, max_cases)
+    _validate_completeness(tasks, delivery_index, daily_file)
 
     if processes == 1:
         results = [
@@ -466,18 +449,6 @@ def parse_args():
         help="Optional exact daily forecast CSV filename to evaluate.",
     )
     parser.add_argument(
-        "--case_index",
-        default=None,
-        type=int,
-        help="Optional zero-based index in the ordered forecast-case stream.",
-    )
-    parser.add_argument(
-        "--max_cases",
-        default=None,
-        type=int,
-        help="Optional cap on selected forecast cases, useful for smoke tests.",
-    )
-    parser.add_argument(
         "--processes",
         default=32,
         type=int,
@@ -512,22 +483,16 @@ def main():
         processes=args.processes,
         delivery_index=args.delivery_index,
         daily_file=args.daily_file,
-        case_index=args.case_index,
-        max_cases=args.max_cases,
     )
 
     identity = (
         f"{args.run_type}_{_safe_name(args.model_setting)}_{_safe_name(column_name)}_"
         f"{args.one_sided}_{args.strategy_model}_{_safe_name(args.band_type)}"
     )
-    if args.case_index is not None:
-        identity += f"_case_{args.case_index}"
     if args.delivery_index is not None:
         identity += f"_delivery_{args.delivery_index}"
     if args.daily_file is not None:
         identity += f"_{_safe_name(args.daily_file)}"
-    if args.max_cases is not None:
-        identity += f"_n_{args.max_cases}"
     csv_path = os.path.join(
         MAE_CRPS_RESULTS_DIR,
         f"dynamic_reweighting_forecast_diagnostics_{identity}.csv",
