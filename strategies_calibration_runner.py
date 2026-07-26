@@ -29,7 +29,7 @@ sys.stdout = open(
 )
 
 joblist = []
-for model in ["median", "bands"]:
+for model in ["median"]:
     if model == "bands":
         bands_types = ["risk_seeking", "risk_averse"]
     else:

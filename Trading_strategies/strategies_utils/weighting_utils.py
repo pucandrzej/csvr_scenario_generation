@@ -96,6 +96,47 @@ def weighted_median(values, weights):
         return interpolated_value
 
 
+def weighted_quantile(values, weights, q):
+    """
+    Compute a weighted quantile using the weighted-median interpolation convention.
+
+    Parameters
+    ----------
+    values : array-like
+        Data values.
+    weights : array-like
+        Corresponding weights.
+    q : float
+        Quantile level in [0, 1].
+
+    Returns
+    -------
+    float
+        Weighted q-th quantile.
+    """
+    if q < 0 or q > 1:
+        raise ValueError("q must be between 0 and 1")
+
+    values = np.asarray(values)
+    weights = np.asarray(weights)
+    i = np.argsort(values)
+    v, w = values[i], weights[i]
+    c = np.cumsum(w)
+    c = c / c[-1]
+    idx = min([np.searchsorted(c, q), len(c) - 1])
+
+    if c[idx] == q or idx == 0:
+        return v[idx]
+    else:
+        c1, c2 = c[idx - 1], c[idx]
+        v1, v2 = v[idx - 1], v[idx]
+        denominator = c2 - c1
+        nominator_1 = v1 * (c2 - q)
+        nominator_2 = v2 * (q - c1)
+        interpolated_value = (nominator_1 + nominator_2) / denominator
+        return interpolated_value
+
+
 def _calc_band(M, Y, idx, band_type):
     """
     Compute an upper or lower prediction band for a given index.
