@@ -6,11 +6,16 @@ at each information time t0, evaluating only the future path t0+1..30.
 
 import argparse
 import os
+from multiprocessing import Pool
+from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from config.test_calibration_validation import validation_window_length
+from config.forecasting_simulation_config import deliveries_no
 
 from config.paths import (
     BENCHMARK_RESULTS_DIR,
@@ -29,8 +34,52 @@ from Trading_strategies.strategies_utils import (
     weighted_quantile,
 )
 
+EXPECTED_N_DELIVERIES = deliveries_no
+EXPECTED_DELIVERY_INDICES = list(range(deliveries_no))  # 0..95
+EXPECTED_DAYS_PER_DELIVERY = validation_window_length
 
-TAUS = np.linspace(0.01, 0.99, 99)
+
+def _validate_completeness(tasks, delivery_index, daily_file, case_index, max_cases):
+    """Raise if the task set doesn't cover the full expected grid of
+    96 deliveries (indices 0-95) x 366 daily files each.
+
+    Skipped when any manual subsetting flag is active, since those
+    deliberately produce a partial task set.
+    """
+    if any(x is not None for x in (delivery_index, daily_file, case_index, max_cases)):
+        return
+
+    if len(tasks) != EXPECTED_N_DELIVERIES:
+        found_indices = sorted(int(dir_name.split("_")[3]) for _, dir_name, *_ in tasks)
+        missing = sorted(set(EXPECTED_DELIVERY_INDICES) - set(found_indices))
+        extra = sorted(set(found_indices) - set(EXPECTED_DELIVERY_INDICES))
+        raise ValueError(
+            f"Expected {EXPECTED_N_DELIVERIES} deliveries (indices 0-95), "
+            f"found {len(tasks)}. Missing: {missing}. Unexpected: {extra}."
+        )
+
+    found_indices = sorted(int(dir_name.split("_")[3]) for _, dir_name, *_ in tasks)
+    if found_indices != EXPECTED_DELIVERY_INDICES:
+        missing = sorted(set(EXPECTED_DELIVERY_INDICES) - set(found_indices))
+        duplicates = sorted({i for i in found_indices if found_indices.count(i) > 1})
+        raise ValueError(
+            f"Delivery indices don't match 0-95 exactly. "
+            f"Missing: {missing}. Duplicated: {duplicates}."
+        )
+
+    bad = [
+        (dir_name, len(daily_files))
+        for _, dir_name, daily_files, _, _ in tasks
+        if len(daily_files) != EXPECTED_DAYS_PER_DELIVERY
+    ]
+    if bad:
+        raise ValueError(
+            f"{len(bad)} deliveries have wrong file count "
+            f"(expected {EXPECTED_DAYS_PER_DELIVERY} each): {bad}"
+        )
+
+
+TAUS = [0.1, 0.5, 0.9] #np.linspace(0.01, 0.99, 99)
 METHOD_NAMES = {
     "raw": "Raw ensemble",
     "mae": "MAE weighting",
@@ -96,67 +145,69 @@ def _load_best_calibrated_params(calibration_path, model_setting, column_name):
     return best_params
 
 
-def _iter_forecast_cases(
+def _results_dir(column_name):
+    return (
+        BENCHMARK_RESULTS_DIR
+        if column_name == "benchmark_prediction"
+        else MODEL_RESULTS_DIR
+    )
+
+
+def _build_delivery_tasks(
     model_setting,
     column_name,
+    calibration_params,
     run_type,
     delivery_index=None,
     daily_file=None,
     case_index=None,
     max_cases=None,
 ):
-    results_dir = (
-        BENCHMARK_RESULTS_DIR
-        if column_name == "benchmark_prediction"
-        else MODEL_RESULTS_DIR
-    )
-
+    """Build one independent worker task per delivery directory."""
+    results_dir = _results_dir(column_name)
     delivery_directories = sorted(
         (d for d in os.listdir(results_dir) if d.endswith(model_setting)),
         key=lambda d: int(d.split("_")[3]),
     )
 
-    selected_cases = 0
+    selected = []
     ordered_case_index = 0
+    selected_cases = 0
 
     for dir_name in delivery_directories:
-        current_delivery_index = int(dir_name.split("_")[3])
-        if delivery_index is not None and current_delivery_index != delivery_index:
+        current_delivery = int(dir_name.split("_")[3])
+        if delivery_index is not None and current_delivery != delivery_index:
             continue
 
-        for current_daily_file in sorted(
-            f_name
-            for f_name in os.listdir(os.path.join(results_dir, dir_name))
-            if f_name.startswith(f"{run_type}_")
+        daily_files = []
+        for filename in sorted(
+            f for f in os.listdir(os.path.join(results_dir, dir_name))
+            if f.startswith(f"{run_type}_")
         ):
             if case_index is not None and ordered_case_index != case_index:
                 ordered_case_index += 1
                 continue
-
             ordered_case_index += 1
 
-            if daily_file is not None and current_daily_file != daily_file:
+            if daily_file is not None and filename != daily_file:
                 continue
 
-            df = pd.read_csv(
-                os.path.join(results_dir, dir_name, current_daily_file),
-                index_col=0,
-            )
-            actual = df["actual"].values
-            forecast = df[
-                [
-                    c
-                    for c in df.columns
-                    if c.startswith(column_name) and "base_path" not in c
-                ]
-            ].values
-
-            yield dir_name, current_daily_file, actual, forecast
-
+            daily_files.append(filename)
             selected_cases += 1
             if max_cases is not None and selected_cases >= max_cases:
-                return
+                break
 
+        if daily_files:
+            selected.append(
+                (results_dir, dir_name, daily_files, column_name, calibration_params)
+            )
+
+        if (case_index is not None and selected_cases) or (
+            max_cases is not None and selected_cases >= max_cases
+        ):
+            break
+
+    return selected
 
 def _dynamic_weights(observed_actual, observed_forecast, params, weights_method):
     residuals = np.median(observed_forecast, axis=1) - observed_actual
@@ -177,8 +228,8 @@ def _dynamic_weights(observed_actual, observed_forecast, params, weights_method)
 def _empty_loss_accumulators():
     return {
         t0: {
-            "mae": {method: [] for method in METHOD_NAMES},
-            "crps": {method: [] for method in METHOD_NAMES},
+            method: {"mae_sum": 0.0, "mae_count": 0, "crps_sum": 0.0, "crps_count": 0}
+            for method in METHOD_NAMES
         }
         for t0 in range(30)
     }
@@ -195,35 +246,26 @@ def _check_weights(w_raw, w_mae, w_kernel, n_scenarios):
     assert np.all(np.isfinite(w_kernel))
 
 
-def calculate_diagnostics(
-    model_setting,
-    column_name,
-    calibration_params,
-    run_type,
-    delivery_index=None,
-    daily_file=None,
-    case_index=None,
-    max_cases=None,
-):
+def _evaluate_delivery(task):
+    """Evaluate all selected days of one delivery and return loss sums/counts."""
+    results_dir, dir_name, daily_files, column_name, calibration_params = task
     losses = _empty_loss_accumulators()
-    cases = 0
     evaluated_cases = []
 
-    for delivery_dir, daily_file_name, y_actual, y_forecast in _iter_forecast_cases(
-        model_setting,
-        column_name,
-        run_type,
-        delivery_index=delivery_index,
-        daily_file=daily_file,
-        case_index=case_index,
-        max_cases=max_cases,
-    ):
-        evaluated_cases.append((delivery_dir, daily_file_name))
-        y_actual = np.asarray(y_actual)
-        y_forecast = np.asarray(y_forecast)
+    for daily_file_name in daily_files:
+        df = pd.read_csv(
+            os.path.join(results_dir, dir_name, daily_file_name), index_col=0
+        )
+        y_actual = df["actual"].to_numpy()
+        y_forecast = df[
+            [
+                c for c in df.columns
+                if c.startswith(column_name) and "base_path" not in c
+            ]
+        ].to_numpy()
+
         assert y_actual.shape[0] == 31
         assert y_forecast.shape[0] == 31
-
         n_scenarios = y_forecast.shape[1]
         w_raw = np.ones(n_scenarios) / n_scenarios
 
@@ -235,16 +277,10 @@ def calculate_diagnostics(
             assert len(future_actual) == 30 - t0
 
             w_mae = _dynamic_weights(
-                observed_actual,
-                observed_forecast,
-                calibration_params["mae"],
-                "mae",
+                observed_actual, observed_forecast, calibration_params["mae"], "mae"
             )
             w_kernel = _dynamic_weights(
-                observed_actual,
-                observed_forecast,
-                calibration_params["kernel"],
-                "kernel",
+                observed_actual, observed_forecast, calibration_params["kernel"], "kernel"
             )
             _check_weights(w_raw, w_mae, w_kernel, n_scenarios)
 
@@ -256,18 +292,56 @@ def calculate_diagnostics(
 
             for actual, forecasts in zip(future_actual, future_forecast):
                 for method, weights in weights_by_method.items():
+                    acc = losses[t0][method]
                     median = weighted_median(forecasts, weights)
-                    losses[t0]["mae"][method].append(abs(actual - median))
+                    acc["mae_sum"] += abs(actual - median)
+                    acc["mae_count"] += 1
 
                     for tau in TAUS:
                         q_hat = weighted_quantile(forecasts, weights, tau)
-                        losses[t0]["crps"][method].append(
-                            analysis_pinball_loss(actual, q_hat, tau)
-                        )
+                        acc["crps_sum"] += analysis_pinball_loss(actual, q_hat, tau)
+                        acc["crps_count"] += 1
 
-        cases += 1
+        evaluated_cases.append((dir_name, daily_file_name))
 
-    if cases == 0:
+    return losses, evaluated_cases
+
+
+def _merge_losses(results):
+    total = _empty_loss_accumulators()
+    evaluated_cases = []
+    for losses, cases in results:
+        evaluated_cases.extend(cases)
+        for t0 in range(30):
+            for method in METHOD_NAMES:
+                for key in ("mae_sum", "mae_count", "crps_sum", "crps_count"):
+                    total[t0][method][key] += losses[t0][method][key]
+    return total, evaluated_cases
+
+
+def calculate_diagnostics(
+    model_setting,
+    column_name,
+    calibration_params,
+    run_type,
+    processes=1,
+    delivery_index=None,
+    daily_file=None,
+    case_index=None,
+    max_cases=None,
+):
+    """Evaluate diagnostics in parallel over delivery directories."""
+    tasks = _build_delivery_tasks(
+        model_setting,
+        column_name,
+        calibration_params,
+        run_type,
+        delivery_index=delivery_index,
+        daily_file=daily_file,
+        case_index=case_index,
+        max_cases=max_cases,
+    )
+    if not tasks:
         raise ValueError(
             f"No {run_type} forecast cases found for "
             f"model_setting={model_setting}, model={column_name}, "
@@ -275,18 +349,33 @@ def calculate_diagnostics(
             f"case_index={case_index}"
         )
 
+    _validate_completeness(tasks, delivery_index, daily_file, case_index, max_cases)
+
+    if processes == 1:
+        results = [
+            _evaluate_delivery(task)
+            for task in tqdm(tasks, desc="Deliveries", unit="delivery")
+        ]
+    else:
+        with Pool(processes=processes) as pool:
+            results = list(
+                tqdm(
+                    pool.imap(_evaluate_delivery, tasks),
+                    total=len(tasks),
+                    desc="Deliveries",
+                    unit="delivery",
+                )
+            )
+
+    losses, evaluated_cases = _merge_losses(results)
     rows = []
     for t0 in range(30):
-        row = {
-            "t0": t0,
-            "n_future_steps": 30 - t0,
-            "mae_raw": np.mean(losses[t0]["mae"]["raw"]),
-            "mae_mae": np.mean(losses[t0]["mae"]["mae"]),
-            "mae_kernel": np.mean(losses[t0]["mae"]["kernel"]),
-            "crps_raw": np.mean(losses[t0]["crps"]["raw"]),
-            "crps_mae": np.mean(losses[t0]["crps"]["mae"]),
-            "crps_kernel": np.mean(losses[t0]["crps"]["kernel"]),
-        }
+        row = {"t0": t0, "n_future_steps": 30 - t0}
+        for method in METHOD_NAMES:
+            acc = losses[t0][method]
+            row[f"mae_{method}"] = acc["mae_sum"] / acc["mae_count"]
+            row[f"crps_{method}"] = acc["crps_sum"] / acc["crps_count"]
+
         row["mae_mae_improvement_pct"] = 100 * (
             row["mae_raw"] - row["mae_mae"]
         ) / row["mae_raw"]
@@ -388,6 +477,12 @@ def parse_args():
         type=int,
         help="Optional cap on selected forecast cases, useful for smoke tests.",
     )
+    parser.add_argument(
+        "--processes",
+        default=32,
+        type=int,
+        help="Number of parallel delivery workers; use 1 for debugging.",
+    )
     return parser.parse_args()
 
 
@@ -414,6 +509,7 @@ def main():
         column_name,
         calibration_params,
         args.run_type,
+        processes=args.processes,
         delivery_index=args.delivery_index,
         daily_file=args.daily_file,
         case_index=args.case_index,
