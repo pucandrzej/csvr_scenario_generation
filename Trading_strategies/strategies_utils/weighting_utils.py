@@ -148,10 +148,7 @@ def vanilla_band(Y, scp, band_type):
     elif band_type == "lower":
         M = np.min(Y, axis=0)
 
-    if scp >= 0.5:
-        levels = np.arange(1, m + 1) / m
-    elif scp < 0.5:
-        levels = np.arange(0, m) / m
+    levels = np.arange(1, m + 1) / m
 
     idx = min([np.searchsorted(levels, scp), len(levels) - 1])
     if levels[idx] == scp or idx == 0:

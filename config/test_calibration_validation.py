@@ -8,6 +8,7 @@ required_end = datetime(2021, 1, 1)
 validation_window_start = "2020-01-01"
 validation_window_end = "2020-12-31"
 validation_window_length = 366
+calibration_window_length = 182
 
 currency_change_date_PL = datetime(2019, 11, 20)
 
