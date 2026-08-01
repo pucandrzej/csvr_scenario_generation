@@ -52,6 +52,12 @@ ALL_Q = np.union1d(TAUS, [0.5])          # sorted union; includes median
 _MEDIAN_POS = int(np.searchsorted(ALL_Q, 0.5))
 _TAU_POS = np.searchsorted(ALL_Q, TAUS)
 
+
+def _raw_quantiles(forecasts):
+    """Return raw-ensemble median and quantiles using NumPy's convention."""
+    return np.nanmedian(forecasts), np.nanquantile(forecasts, TAUS)
+
+
 def _validate_completeness(tasks, delivery_index, daily_file, run_type):
     """Raise if the task set doesn't cover the full expected grid of
     96 deliveries (indices 0-95) x the expected daily files per run type.
@@ -296,13 +302,17 @@ def _evaluate_delivery(task):
                     weights = weights_by_method[method]
                     acc = losses[t0][method]
 
-                    q_hats = batch_weighted_quantiles(forecasts, weights, ALL_Q)
+                    if method == "raw":
+                        median, tau_quantiles = _raw_quantiles(forecasts)
+                    else:
+                        q_hats = batch_weighted_quantiles(forecasts, weights, ALL_Q)
+                        median = q_hats[_MEDIAN_POS]
+                        tau_quantiles = q_hats[_TAU_POS]
 
-                    median = q_hats[_MEDIAN_POS]
                     acc["mae_sum"] += abs(actual - median)
                     acc["mae_count"] += 1
 
-                    for tau, q_hat in zip(TAUS, q_hats[_TAU_POS]):
+                    for tau, q_hat in zip(TAUS, tau_quantiles):
                         acc["crps_sum"] += analysis_pinball_loss(actual, q_hat, tau)
                         acc["crps_count"] += 1
 
