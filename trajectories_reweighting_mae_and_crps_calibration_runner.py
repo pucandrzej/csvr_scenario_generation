@@ -1,15 +1,18 @@
-"""Run compact MAE/CRPS calibration grid through the diagnostic script."""
+"""Calibrate kernel weights on calibration CSVs, then validate both optima."""
 
 import argparse
 import itertools
 import os
-import subprocess
-import sys
+
+import pandas as pd
 
 from config.paths import MAE_CRPS_RESULTS_DIR
 from config.trading_strategies_calibration_config import (
     bands_grid_config,
     median_grid_config,
+)
+from Forecasting_results_analysis.dynamic_reweighting_forecast_diagnostics import (
+    evaluate_parameter_grid,
 )
 
 
@@ -21,124 +24,164 @@ MODEL_CONFIGS = [
     ("_____None____", "benchmark_prediction"),
 ]
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid_source", default="median", choices=["median", "bands"])
-    parser.add_argument("--weights_method", default="all", choices=["all", "mae", "kernel"])
-    parser.add_argument("--run_type", default="calibration")
-    parser.add_argument("--processes", default="32")
-    parser.add_argument("--model_setting", default=None)
-    parser.add_argument("--underlying_model_column", default=None)
-    parser.add_argument("--delivery_index", default=None)
-    parser.add_argument("--daily_file", default=None)
-    parser.add_argument("--p_values", default=None)
-    parser.add_argument("--lambda_values", default=None)
-    parser.add_argument("--max_grid_rows", default=None, type=int)
+    parser.add_argument("--processes", default=32, type=int)
     parser.add_argument(
-        "--output_file",
-        default="calibration_dynamic_reweighting_forecast_diagnostics.csv",
+        "--model_setting",
+        choices=[model_setting for model_setting, _ in MODEL_CONFIGS],
+    )
+    parser.add_argument(
+        "--calibration_file",
+        default="calibration_dynamic_reweighting_forecast.csv",
+    )
+    parser.add_argument(
+        "--validation_file",
+        default="validation_dynamic_reweighting_forecast.csv",
+    )
+    parser.add_argument(
+        "--validation_t0_file",
+        default="validation_dynamic_reweighting_forecast_by_t0.csv",
     )
     return parser.parse_args()
 
 
-def _parse_float_list(values):
-    if values is None:
-        return None
-    return [float(value) for value in values.split(",")]
-
-
-def grid_rows(grid_source, weights_method, p_values=None, lambda_values=None):
+def parameter_grid(grid_source):
     config = bands_grid_config if grid_source == "bands" else median_grid_config
-    p_list = p_values or config["p_list"]
-    lambda_list = lambda_values or config["lambda_list"]
-    rows = []
-
-    if weights_method in ["all", "kernel"]:
-        rows.extend(
-            ("kernel", p, lambda_)
-            for p, lambda_ in itertools.product(p_list, lambda_list)
-        )
-    if weights_method in ["all", "mae"]:
-        rows.append(("mae", "nan", "nan"))
-
-    return rows
+    return [
+        ("kernel", float(p), float(lambda_))
+        for p, lambda_ in itertools.product(config["p_list"], config["lambda_list"])
+    ]
 
 
-def model_configs(args):
-    if args.model_setting is None:
-        return MODEL_CONFIGS
+def result_path(filename):
+    return filename if os.path.isabs(filename) else os.path.join(MAE_CRPS_RESULTS_DIR, filename)
 
-    column = args.underlying_model_column
-    if column is None:
-        column = (
-            "benchmark_prediction"
-            if args.model_setting == "_____None____"
-            else "MULTI_prediction"
-        )
-    return [(args.model_setting, column)]
+
+def parameter_key(method, p, lambda_):
+    def number(value):
+        return None if pd.isna(value) else float(value)
+
+    return method, number(p), number(lambda_)
+
+
+def completed_parameters(path, model_setting, column_name):
+    if not os.path.exists(path):
+        return set()
+    results = pd.read_csv(path)
+    rows = results[
+        (results["run_type"] == "calibration")
+        & (results["model_setting"] == model_setting)
+        & (results["model"] == column_name)
+    ]
+    return {
+        parameter_key(row.weights, row.param2, row.param3)
+        for row in rows.itertuples()
+    }
+
+
+def append_results(results, path):
+    append = os.path.exists(path)
+    results.to_csv(path, mode="a" if append else "w", header=not append, index=False)
+
+
+def replace_model_results(results, path):
+    if os.path.exists(path):
+        previous = pd.read_csv(path)
+        previous = previous[
+            ~previous["model_setting"].isin(results["model_setting"].unique())
+        ]
+        results = pd.concat([previous, results], ignore_index=True)
+    results.to_csv(path, index=False)
+
+
+def best_kernel_parameters(calibration, model_setting, column_name):
+    rows = calibration[
+        (calibration["run_type"] == "calibration")
+        & (calibration["model_setting"] == model_setting)
+        & (calibration["model"] == column_name)
+        & (calibration["weights"] == "kernel")
+    ]
+    if rows.empty:
+        raise ValueError(f"No kernel calibration results for {model_setting}")
+
+    best_mae = rows.loc[rows["mae_weighted"].idxmin()]
+    best_crps = rows.loc[rows["crps_weighted"].idxmin()]
+    return [
+        ("mae", ("kernel", float(best_mae.param2), float(best_mae.param3))),
+        ("crps", ("kernel", float(best_crps.param2), float(best_crps.param3))),
+    ]
 
 
 def main():
     args = parse_args()
-    rows = grid_rows(
-        args.grid_source,
-        args.weights_method,
-        p_values=_parse_float_list(args.p_values),
-        lambda_values=_parse_float_list(args.lambda_values),
+    calibration_path = result_path(args.calibration_file)
+    validation_path = result_path(args.validation_file)
+    validation_t0_path = result_path(args.validation_t0_file)
+    parameters = parameter_grid(args.grid_source)
+    model_configs = [
+        config
+        for config in MODEL_CONFIGS
+        if args.model_setting is None or config[0] == args.model_setting
+    ]
+
+    for model_setting, column_name in model_configs:
+        completed = completed_parameters(calibration_path, model_setting, column_name)
+        pending = [
+            parameter
+            for parameter in parameters
+            if parameter_key(*parameter) not in completed
+        ]
+        if not pending:
+            print(f"Calibration already complete: {model_setting}", flush=True)
+            continue
+
+        print(f"Calibrating {model_setting}: {len(pending)} settings", flush=True)
+        results = evaluate_parameter_grid(
+            model_setting,
+            column_name,
+            pending,
+            run_type="calibration",
+            processes=args.processes,
+        )
+        append_results(results, calibration_path)
+
+    calibration = pd.read_csv(calibration_path)
+    validation_results = []
+    validation_t0_results = []
+    for model_setting, column_name in model_configs:
+        selected = best_kernel_parameters(calibration, model_setting, column_name)
+        print(f"Validating {model_setting}: MAE-best and CRPS-best", flush=True)
+        results, per_t0 = evaluate_parameter_grid(
+            model_setting,
+            column_name,
+            [parameter for _, parameter in selected],
+            run_type="test",
+            processes=args.processes,
+            return_per_t0=True,
+        )
+        results.insert(0, "selected_by", [metric for metric, _ in selected])
+        per_t0.insert(
+            0,
+            "selected_by",
+            [metric for metric, _ in selected for _ in range(30)],
+        )
+        validation_results.append(results)
+        validation_t0_results.append(per_t0)
+
+    replace_model_results(
+        pd.concat(validation_results, ignore_index=True),
+        validation_path,
     )
-    if args.max_grid_rows is not None:
-        rows = rows[: args.max_grid_rows]
-
-    completed_path = os.path.join(MAE_CRPS_RESULTS_DIR, "calibration_dynamic_reweighting_forecast.csv")
-    with open(completed_path) as file:
-        completed = file.read()
-    append_output = os.path.exists(os.path.join(MAE_CRPS_RESULTS_DIR, args.output_file))
-    for model_setting, column_name in model_configs(args):
-        for weights_method, p, lambda_ in rows:
-            params = ("", "") if weights_method == "mae" else (float(p), float(lambda_))
-            config = f"{args.run_type},{params[0]},{params[1]},{weights_method},{model_setting},{column_name},"
-            if f"\n{config}" in completed:
-                print(f"Skipping existing: {model_setting}, {weights_method}, {p}, {lambda_}", flush=True)
-                continue
-
-            cmd = [
-                sys.executable,
-                "-m",
-                "Forecasting_results_analysis.dynamic_reweighting_forecast_diagnostics",
-                "--model_setting",
-                model_setting,
-                "--underlying_model_column",
-                column_name,
-                "--run_type",
-                args.run_type,
-                "--weights_method",
-                weights_method,
-                "--distribution_param",
-                str(p),
-                "--lambda_parameter",
-                str(lambda_),
-                "--aggregate_over_t0",
-                "--output_file",
-                args.output_file,
-                "--processes",
-                str(args.processes),
-            ]
-            if append_output:
-                cmd.append("--append_output")
-            if args.delivery_index is not None:
-                cmd.extend(["--delivery_index", str(args.delivery_index)])
-            if args.daily_file is not None:
-                cmd.extend(["--daily_file", args.daily_file])
-
-            print(" ".join(cmd), flush=True)
-            subprocess.run(cmd, check=True)
-            append_output = True
-
-    print(
-        "Saved calibration diagnostics to "
-        f"{os.path.join('MAE_CRPS_RESULTS', args.output_file)}",
-        flush=True,
+    replace_model_results(
+        pd.concat(validation_t0_results, ignore_index=True),
+        validation_t0_path,
     )
+    print(f"Calibration results: {calibration_path}")
+    print(f"Validation results: {validation_path}")
+    print(f"Validation by t0: {validation_t0_path}")
 
 
 if __name__ == "__main__":
