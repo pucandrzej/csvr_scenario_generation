@@ -28,6 +28,7 @@ EXPECTED_DAYS = {
 def _read_forecast(path, column_name):
     """Read actuals and the variable number of matching scenario columns."""
     def wanted(name):
+        """Return whether a CSV column is required for evaluation."""
         return name == "actual" or (
             name.startswith(column_name) and "base_path" not in name
         )
@@ -47,6 +48,11 @@ def _delivery_tasks(
     delivery_index=None,
     daily_file=None,
 ):
+    """Build one worker task per delivery directory.
+
+    Optional delivery and filename filters are used only for focused checks;
+    normal calibration and validation cover the complete dataset.
+    """
     results_dir = (
         BENCHMARK_RESULTS_DIR
         if column_name == "benchmark_prediction"
@@ -76,6 +82,7 @@ def _delivery_tasks(
 
 
 def _validate_tasks(tasks, run_type, delivery_index, daily_file):
+    """Check that an unfiltered run covers every delivery and expected day."""
     if not tasks:
         raise ValueError(f"No {run_type} forecast files found")
     if delivery_index is not None or daily_file is not None:
@@ -92,6 +99,7 @@ def _validate_tasks(tasks, run_type, delivery_index, daily_file):
 
 
 def _pinball_sum(actual, quantiles):
+    """Return the summed pinball loss across horizons and quantile levels."""
     errors = np.asarray(actual)[..., None] - quantiles
     return np.where(
         errors >= 0,
@@ -153,6 +161,7 @@ def _parameter_weights(actual, forecasts, t0, parameters):
 
 
 def _evaluate_delivery(task):
+    """Evaluate every parameter setting for all daily files of one delivery."""
     results_dir, directory, files, column_name, parameters = task
     raw_sums = np.zeros((2, 30))
     weighted_sums = np.zeros((len(parameters), 2, 30))
@@ -211,7 +220,13 @@ def evaluate_parameter_grid(
     daily_file=None,
     return_per_t0=False,
 ):
-    """Evaluate all parameters in one pass over calibration or test CSVs."""
+    """Evaluate a weighting grid in one pass over calibration or test CSVs.
+
+    Parameters are ``(method, p, lambda)`` tuples. The returned DataFrame has
+    one row per tuple, aggregated over the 30 information times. When
+    ``return_per_t0`` is true, a second DataFrame containing one row per tuple
+    and information time is returned alongside it.
+    """
     tasks = _delivery_tasks(
         model_setting,
         column_name,

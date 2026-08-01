@@ -26,6 +26,7 @@ MODEL_CONFIGS = [
 
 
 def parse_args():
+    """Parse grid, model-selection, process-count, and output-file options."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid_source", default="median", choices=["median", "bands"])
     parser.add_argument("--processes", default=32, type=int)
@@ -49,6 +50,7 @@ def parse_args():
 
 
 def parameter_grid(grid_source):
+    """Return every kernel ``(method, p, lambda)`` tuple for a named grid."""
     config = bands_grid_config if grid_source == "bands" else median_grid_config
     return [
         ("kernel", float(p), float(lambda_))
@@ -57,17 +59,21 @@ def parameter_grid(grid_source):
 
 
 def result_path(filename):
+    """Resolve relative result filenames inside the MAE/CRPS output directory."""
     return filename if os.path.isabs(filename) else os.path.join(MAE_CRPS_RESULTS_DIR, filename)
 
 
 def parameter_key(method, p, lambda_):
+    """Create a stable, hashable key for resume checks."""
     def number(value):
+        """Normalize CSV numbers and missing values for key comparison."""
         return None if pd.isna(value) else float(value)
 
     return method, number(p), number(lambda_)
 
 
 def completed_parameters(path, model_setting, column_name):
+    """Read the parameter keys already calibrated for one model."""
     if not os.path.exists(path):
         return set()
     results = pd.read_csv(path)
@@ -83,11 +89,13 @@ def completed_parameters(path, model_setting, column_name):
 
 
 def append_results(results, path):
+    """Append new calibration rows, writing a header only for a new file."""
     append = os.path.exists(path)
     results.to_csv(path, mode="a" if append else "w", header=not append, index=False)
 
 
 def replace_model_results(results, path):
+    """Replace selected models while preserving other validation rows."""
     if os.path.exists(path):
         previous = pd.read_csv(path)
         previous = previous[
@@ -98,6 +106,7 @@ def replace_model_results(results, path):
 
 
 def best_kernel_parameters(calibration, model_setting, column_name):
+    """Select separate kernel parameters minimizing MAE and CRPS."""
     rows = calibration[
         (calibration["run_type"] == "calibration")
         & (calibration["model_setting"] == model_setting)
@@ -116,6 +125,7 @@ def best_kernel_parameters(calibration, model_setting, column_name):
 
 
 def main():
+    """Start or resume calibration, select both optima, and run their validation."""
     args = parse_args()
     calibration_path = result_path(args.calibration_file)
     validation_path = result_path(args.validation_file)
