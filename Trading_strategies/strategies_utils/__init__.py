@@ -21,7 +21,7 @@ from .strategy_quality_measures import (
 from .weighting_utils import (
     compute_weights,
     weighted_median,
-    weighted_quantile,
     vanilla_band,
     weighted_band,
+    batch_weighted_quantiles
 )
