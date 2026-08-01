@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import Pool
 
 from config.forecasting_simulation_config import limited_scenarios_number
-from .forecasting_results_utils import my_mae, timing, analysis_pinball_loss
+from .forecasting_results_utils import timing
 
 from config.test_calibration_validation import (
     validation_window_length,
@@ -103,36 +103,16 @@ def get_pinball_from_csvr(inp):
 
     taus = np.linspace(0.01, 0.99, 99)
 
-    all_forecasts = np.ones(
-        (len(taus), np.shape(all_scenarios)[2], validation_window_length)
-    )
-    all_actuals = np.ones((np.shape(all_scenarios)[2], validation_window_length))
+    quantiles = np.nanquantile(all_scenarios, taus, axis=1)
+    errors = actuals[None, :, :] - quantiles
+    tau_grid = taus[:, None, None]
+    losses = np.where(errors >= 0, tau_grid * errors, (1 - tau_grid) * -errors)
 
-    pinball_sum = 0
-    pinball = []
-    path_idxs = []
-    used_taus = []
-    mae = []
-
-    full_path = range(np.shape(all_scenarios)[2])
-
-    for path_component in full_path:
-        y = actuals[:, path_component]
-        X = all_scenarios[:, :, path_component].T
-
-        for tau_idx, tau in enumerate(taus):
-            forecasts = np.nanquantile(X, q=tau, axis=0)
-
-            all_forecasts[tau_idx, path_component, :] = forecasts
-
-            pinball.append(analysis_pinball_loss(y, forecasts, tau))
-            pinball_sum += analysis_pinball_loss(y, forecasts, tau)
-            path_idxs.append(path_component)
-            used_taus.append(tau)
-
-        mae.append(my_mae(np.nanmedian(X, axis=0), y))
-
-        all_actuals[path_component, :] = y
+    full_path = range(all_scenarios.shape[2])
+    path_idxs = np.repeat(full_path, len(taus))
+    used_taus = np.tile(taus, len(full_path))
+    pinball = losses.mean(axis=1).T.ravel()
+    mae = np.abs(np.nanmedian(all_scenarios, axis=1) - actuals).mean(axis=0)
 
     qra_pinball_score_df = pd.DataFrame()
     qra_pinball_score_df["path_idx"] = path_idxs

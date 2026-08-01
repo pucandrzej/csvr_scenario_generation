@@ -49,6 +49,7 @@ class ForecastConfig:
 
     @property
     def key(self):
+        """Return the unique, file-safe configuration identifier."""
         model = "benchmark" if self.approach == "benchmark" else self.column
         return (
             f"{self.approach}_{model}_{self.wasserstein}_"
@@ -57,6 +58,7 @@ class ForecastConfig:
 
     @property
     def label(self):
+        """Return the compact configuration label used in plots."""
         window = "all" if self.required_scenarios == "None" else self.required_scenarios
         if self.approach == "benchmark":
             return f"BENCH/{window}"
@@ -85,6 +87,7 @@ def forecast_configs():
 
 
 def _result_directory(config, delivery):
+    """Return the raw-results directory for one configuration and delivery."""
     trade_time = delivery * 3 + last_trade_time_in_path_delta
     common = (
         f"{validation_window_start}_{validation_window_end}_364_{delivery}_"
@@ -101,6 +104,7 @@ def _result_directory(config, delivery):
 
 
 def _daily_losses(path, column):
+    """Calculate trajectory-level MAE and CRPS from one daily result file."""
     df = pd.read_csv(path, index_col=0)
     actual = df["actual"].to_numpy(float)
     forecast_columns = [
@@ -125,6 +129,7 @@ def _daily_losses(path, column):
 
 
 def _delivery_losses(delivery, config):
+    """Calculate daily MAE and CRPS series for one delivery and configuration."""
     directory = _result_directory(config, delivery)
     files = sorted(directory.glob("test_*.csv"))
     if len(files) != N_DAYS:
@@ -144,6 +149,7 @@ def _delivery_losses(delivery, config):
 
 
 def _config_losses(config, pool, recompute=False):
+    """Load or calculate day-by-delivery loss matrices for one configuration."""
     LOSS_CACHE_DIR.mkdir(exist_ok=True)
     cache = LOSS_CACHE_DIR / f"{config.key}.npz"
     if cache.exists() and not recompute:
@@ -177,7 +183,7 @@ def dm_p_value(loss_1, loss_2):
     mean = differential.mean()
     variance = differential.var(ddof=0)
     if variance == 0:
-        return 1.0 if mean == 0 else float(mean < 0)
+        raise ValueError("Variance of loss measures differences is 0. We do not expect this to happen in this project - please review the inputs.")
     statistic = mean / np.sqrt(variance / differential.size)
     return float(1 - stats.norm.cdf(statistic))
 
@@ -194,6 +200,7 @@ def pairwise_dm(losses):
 
 
 def _dm_colormap():
+    """Return the green-yellow-red-black colormap used for DM p-values."""
     red = np.r_[np.linspace(0, 1, 50), np.linspace(1, 0.5, 50)[1:], 0]
     green = np.r_[np.linspace(0.5, 1, 50), np.zeros(50)]
     cmap = mpl.colors.ListedColormap(np.c_[red, green, np.zeros(100)])
@@ -226,6 +233,7 @@ def plot_dm(p_values, labels, metric, output_stem):
 
 
 def parse_args():
+    """Parse command-line options for worker count and cache replacement."""
     parser = argparse.ArgumentParser(
         description="Run 27-case multivariate DM tests for MAE and CRPS."
     )
@@ -235,6 +243,7 @@ def parse_args():
 
 
 def main():
+    """Calculate, save, and plot the MAE and CRPS DM comparisons."""
     args = parse_args()
     configs = forecast_configs()
     if len(configs) != 27:
