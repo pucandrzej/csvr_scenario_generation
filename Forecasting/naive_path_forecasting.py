@@ -14,7 +14,12 @@ from multiprocessing import Pool, RawArray
 
 import sqlite3
 
-from config.paths import MARKET_DATA_DIR, TIMING_RESULTS_DIR, BENCHMARK_RESULTS_DIR
+from config.paths import (
+    MARKET_DATA_DIR,
+    TIMING_RESULTS_DIR,
+    BENCHMARK_RESULTS_DIR,
+    RAW_BENCHMARK_RESULTS_DIR,
+)
 from config.test_calibration_validation import (
     validation_window_start,
     validation_window_end,
@@ -57,6 +62,8 @@ parser.add_argument(
     default=None,
     help='Number of the most recent scenarios to be used for SVR path scenarios recalculation if scenarios_sampling_method is "latest". Cannot exceed the sample length.',
 )
+parser.add_argument("--seed", default=0, type=int, help="Benchmark random seed.")
+parser.add_argument("--special_results_directory", default=None)
 
 PATHS_NO = 1000  # number of naive paths scenarios to simulate
 
@@ -67,6 +74,10 @@ lookback = int(args.lookback)
 trade_time = int(args.trade_time)
 delivery_time = int(args.delivery_time)
 calibration_window_len = int(args.calibration_window_len)
+if args.special_results_directory is not None:
+    BENCHMARK_RESULTS_DIR = os.path.join(
+        args.special_results_directory, RAW_BENCHMARK_RESULTS_DIR
+    )
 if args.required_scenarios is not None:
     required_scenarios = int(args.required_scenarios)
 else:
@@ -127,9 +138,8 @@ def run_one_day(inp):
     Y_historical = Y[:-1, :]  # select only the historical trajectories to sample from
     if required_scenarios is not None:
         Y_historical = Y_historical[-required_scenarios:, :]
-    sampled_indices = np.random.choice(
-        Y_historical.shape[0], size=PATHS_NO, replace=True
-    )
+    rng = np.random.default_rng([args.seed, delivery_time, date_fore.toordinal()])
+    sampled_indices = rng.choice(Y_historical.shape[0], size=PATHS_NO, replace=True)
     sampled_Y = Y_historical[sampled_indices, :]
     sampled_cumsum = np.cumsum(sampled_Y, axis=1)
     simulation_results = (sampled_cumsum + trajectory_start_point).T
