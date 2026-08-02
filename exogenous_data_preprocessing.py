@@ -70,9 +70,9 @@ for cty in BORDER_CTYS:
         pln_eur = pd.read_csv(
             os.path.join(DATA_DIR, "Day-Ahead-Quarterly-Data", "PLN_EUR_2018_2019.csv"),
             index_col=0,
-        )["Price"]
+        )["Open"]
         pln_eur.index = pd.to_datetime(pln_eur.index, format="%d-%m-%Y")
-        pln_eur_resampled = pln_eur.sort_index().resample("1h").ffill()
+        pln_eur_resampled = pln_eur.sort_index().resample("1h").ffill().shift(24)
         da_price_all_years_dst_corrected.loc[
             da_price_all_years_dst_corrected.index < currency_change_date_PL, "PL"
         ] = (

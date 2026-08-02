@@ -17,24 +17,22 @@ def parse_filename(fname):
 
     parts = base.split("_")
 
-    if len(parts) < 7:
+    if len(parts) < 6:
         raise ValueError(f"Unexpected filename format: {fname}")
 
     # Band type = last two tokens
     band_type = "_".join(parts[-2:])
 
     model_type = parts[-3]
-    direction = parts[-4]
-    one_sided = parts[-5] == "True"
-    underlying_column = parts[-6]
+    one_sided = parts[-4] == "True"
+    underlying_column = parts[-5]
 
-    underlying_model = "_".join(parts[:-6])
+    underlying_model = "_".join(parts[:-5])
 
     return {
         "underlying_model": underlying_model,
         "underlying_column": underlying_column,
         "one_sided": one_sided,
-        "direction": direction,
         "model_type": model_type,
         "band_type": band_type,
     }
@@ -48,7 +46,7 @@ def classify_strategy(meta):
     out = {}
 
     # Seller / Prop
-    if meta["direction"] == "-1":
+    if meta["one_sided"]:
         out["agent_type"] = "SELLER"
     else:
         out["agent_type"] = "PROP"

@@ -236,7 +236,7 @@ def speculative_strategy_correction(
         desired_exit != desired_entry
         and not in_position
         and desired_entry_profit * desired_direction - trust_threshold
-        > planned_entry_profit * direction
+        > planned_entry_profit * planned_direction
     ):
         planned_entry = desired_entry
         planned_exit = desired_exit

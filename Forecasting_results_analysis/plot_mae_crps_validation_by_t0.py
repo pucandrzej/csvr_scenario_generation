@@ -1,4 +1,4 @@
-"""Create validation plots from the previously generated per-t0 CSV."""
+"""Create one all-model validation plot from the per-t0 CSV."""
 
 import argparse
 import os
@@ -21,46 +21,77 @@ def parse_args():
     return parser.parse_args()
 
 
-def validation_figure(results, model_setting):
+def _model_label(model_setting, model):
+    setting = str(model_setting).strip("_") or "benchmark"
+    return f"{setting} ({model})"
+
+
+def validation_figure(results, title="Validation metrics by t0"):
     figure = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes=True,
-        subplot_titles=("Weighted MAE", "Weighted CRPS"),
+        subplot_titles=("MAE", "CRPS"),
     )
-    raw = results.sort_values("t0").drop_duplicates("t0")
-    colors = {"mae": "#1f77b4", "crps": "#d62728"}
+    group_columns = ["model_setting", "model"]
+    groups = (
+        results.groupby(group_columns, sort=False)
+        if set(group_columns).issubset(results.columns)
+        else [((None, None), results)]
+    )
+    colors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+    ]
+    styles = {"raw": "dash", "mae": "solid", "crps": "dot"}
 
-    for row, metric in ((1, "mae"), (2, "crps")):
-        figure.add_trace(
-            go.Scatter(
-                x=raw["t0"],
-                y=raw[f"{metric}_raw"],
-                mode="lines+markers",
-                name="Raw ensemble",
-                line={"color": "#666666", "dash": "dash"},
-                showlegend=row == 1,
-            ),
-            row=row,
-            col=1,
-        )
+    for index, ((model_setting, model), model_results) in enumerate(groups):
+        label = _model_label(model_setting, model) if model_setting is not None else None
+        color = colors[index % len(colors)]
+        raw = model_results.sort_values("t0").drop_duplicates("t0")
 
-        for selected_by in ("mae", "crps"):
-            selected = results[results["selected_by"] == selected_by]
+        for row, metric in ((1, "mae"), (2, "crps")):
             figure.add_trace(
                 go.Scatter(
-                    x=selected["t0"],
-                    y=selected[f"{metric}_weighted"],
+                    x=raw["t0"],
+                    y=raw[f"{metric}_raw"],
                     mode="lines+markers",
-                    name=f"Selected by {selected_by.upper()}",
-                    line={"color": colors[selected_by]},
+                    name=f"{label} - raw" if label else "Raw ensemble",
+                    line={"color": color, "dash": styles["raw"]},
                     showlegend=row == 1,
                 ),
                 row=row,
                 col=1,
             )
 
-    figure.update_layout(title=model_setting, template="plotly_white")
+            for selected_by in ("mae", "crps"):
+                selected = model_results[model_results["selected_by"] == selected_by]
+                figure.add_trace(
+                    go.Scatter(
+                        x=selected["t0"],
+                        y=selected[f"{metric}_weighted"],
+                        mode="lines+markers",
+                        name=(
+                            f"{label} - selected by {selected_by.upper()}"
+                            if label
+                            else f"Selected by {selected_by.upper()}"
+                        ),
+                        line={"color": color, "dash": styles[selected_by]},
+                        showlegend=row == 1,
+                    ),
+                    row=row,
+                    col=1,
+                )
+
+    figure.update_layout(
+        title=title,
+        template="plotly_white",
+        legend={"orientation": "h", "y": -0.2},
+    )
     figure.update_yaxes(title_text="MAE", row=1, col=1)
     figure.update_yaxes(title_text="CRPS", row=2, col=1)
     figure.update_xaxes(title_text="t0", row=2, col=1)
@@ -81,17 +112,12 @@ def main():
         raise ValueError("No matching validation rows found")
 
     os.makedirs(args.output_dir, exist_ok=True)
-    for (model_setting, _), model_results in results.groupby(
-        ["model_setting", "model"],
-        sort=False,
-    ):
-        name = model_setting.strip("_") or "benchmark"
-        output_path = os.path.join(
-            args.output_dir,
-            f"validation_dynamic_reweighting_by_t0_{name}.html",
-        )
-        validation_figure(model_results, model_setting).write_html(output_path)
-        print(f"Saved: {output_path}")
+    output_path = os.path.join(
+        args.output_dir,
+        "validation_dynamic_reweighting_by_t0.html",
+    )
+    validation_figure(results).write_html(output_path)
+    print(f"Saved: {output_path}")
 
 
 if __name__ == "__main__":

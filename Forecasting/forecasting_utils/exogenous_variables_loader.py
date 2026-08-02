@@ -144,7 +144,7 @@ def add_exogenous_from_cache_to_variables(
 
     # ----- Adjust DA forecasts based on 08:00 update -----
     Gen_intraday_adjusted = Gen.copy(deep=True)
-    if forecasting_time.hour >= 8:
+    if forecasting_time >= pd.to_datetime(date_fore).replace(hour=8):
         Gen_intraday_adjusted["W DA"] = Gen_intraday_adjusted["W ID"]
         Gen_intraday_adjusted["SPV DA"] = Gen_intraday_adjusted["SPV ID"]
 
@@ -283,16 +283,10 @@ def add_last_known_exogenous_from_cache(
         ) + pd.Timedelta(minutes=exog_avail_mins - shift)
 
         # ---------------------------------------------------------
-        # Select only available rows from dataframes (date shift)
+        # Select only the rows from dataframes that are available for us at the forecasting time
         # ---------------------------------------------------------
-        if datetime_avail.date() < date_fore.date():
-            # we are shifted by one day
-            limit_date = pd.to_datetime(date_fore.date())
-        else:
-            limit_date = pd.to_datetime(date_fore.date() + pd.Timedelta(days=1))
-
-        exog_df_limited = exog_df[exog_df.index <= limit_date]
-        DE_commex_sel = DE_commex[DE_commex.index <= limit_date]
+        exog_df_limited = exog_df[exog_df.index <= datetime_avail]
+        DE_commex_sel = DE_commex[DE_commex.index <= datetime_avail]
 
         # ---------------------------------------------------------
         # Hour / minute resolution differences for exog types

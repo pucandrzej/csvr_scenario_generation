@@ -531,12 +531,6 @@ def run_one_day(inp):
 
             all_forecasts = []
 
-            # save the base forecast
-            results[f"{path_svr_estimator}_prediction_base"] = (
-                scaler_target.inverse_transform(base_predictions.reshape(1, -1))[0, :]
-                + last_known_price
-            )
-
             for scenario_idx, scenario in enumerate(required_scenarios_indices):
                 pred = scenario_forecast[scenario]
                 results = results.copy()
