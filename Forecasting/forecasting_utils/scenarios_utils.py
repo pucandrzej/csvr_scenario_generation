@@ -531,7 +531,7 @@ def check_wasserstein_stopping(
     wasserstein: float,
     deltas: list,
     quantile_diff_tolerance: float,
-    min_scenarios: int = 10,
+    min_scenarios: int = 12,
     wasserstein_moving_avg_window: int = 10,
 ):
     """
@@ -584,8 +584,10 @@ def check_wasserstein_stopping(
         np.abs(deltas_arr)[-wasserstein_moving_avg_window:]
     )  # moving average over step-to-step deltas
 
-    if (wasserstein_deltas_ma < quantile_diff_tolerance) and (
-        scenario_idx >= min_scenarios
+    if (
+        len(deltas) >= wasserstein_moving_avg_window
+        and wasserstein_deltas_ma < quantile_diff_tolerance
+        and scenario_idx + 1 >= min_scenarios
     ):
         return True, wasserstein_new, deltas
 
