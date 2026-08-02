@@ -29,7 +29,7 @@ sys.stdout = open(
 )
 
 joblist = []
-for model in ["median"]:
+for model in ["median", "bands"]:
     if model == "bands":
         bands_types = ["risk_seeking", "risk_averse"]
     else:
@@ -65,5 +65,7 @@ while invoked < len(joblist):
         f"running job {invoked + 1} of {len(joblist)}: {joblist[invoked]}", flush=True
     )
     stack.append(subprocess.Popen(line, stderr=sys.stderr, stdout=sys.stdout))
-    stack[-1].wait()  # wait for the process to finish
+    return_code = stack[-1].wait()  # wait for the process to finish
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, line)
     invoked += 1

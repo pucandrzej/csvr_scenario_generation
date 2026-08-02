@@ -109,7 +109,7 @@ def mdd(pnl):
     """
     Compute the maximum drawdown.
     """
-    equity = np.cumsum(pnl)
+    equity = np.concatenate(([0.0], np.cumsum(pnl)))
     peak = np.maximum.accumulate(equity)
     drawdown = peak - equity
     return np.max(drawdown)
@@ -119,7 +119,7 @@ def avg_dd(pnl):
     """
     Compute average drawdown.
     """
-    equity = np.cumsum(pnl)
+    equity = np.concatenate(([0.0], np.cumsum(pnl)))
     peak = np.maximum.accumulate(equity)
     drawdown = peak - equity
     return np.mean(drawdown)

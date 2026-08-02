@@ -35,12 +35,12 @@ parser.add_argument(
     default=None,
     help="Running on WCSS Wroclaw University of Science and Technology supercomputers requires us to save the results in dedicated path.",
 )
-
-processes = 32
+parser.add_argument("--seed", default=0, type=int, help="Benchmark random seed.")
 
 args = parser.parse_args()
 
 start = args.start_delivery
+processes = int(args.processes)
 sys.stderr = open(
     os.path.join(
         LOGS_DIR,
@@ -74,6 +74,8 @@ for delivery_time in range(int(start), int(args.end_delivery)):
                 str(args.calibration_window_len),
                 "--processes",
                 str(processes),
+                "--seed",
+                str(args.seed),
             ]
             + ["--required_scenarios", str(required_scenarios)]
             * (required_scenarios is not None)
@@ -98,5 +100,7 @@ while invoked < len(joblist):
     line = joblist[invoked]
     print(f"running job {invoked + 1} of {len(joblist)}: {joblist[invoked]}")
     stack.append(subprocess.Popen(line, stderr=sys.stderr, stdout=sys.stdout))
-    stack[-1].wait()  # wait for the process to finish
+    return_code = stack[-1].wait()  # wait for the process to finish
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, line)
     invoked += 1

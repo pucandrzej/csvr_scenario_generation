@@ -36,17 +36,28 @@ def parse_args():
     )
     parser.add_argument(
         "--calibration_file",
-        default="calibration_dynamic_reweighting_forecast.csv",
+        default=None,
     )
     parser.add_argument(
         "--validation_file",
-        default="validation_dynamic_reweighting_forecast.csv",
+        default=None,
     )
     parser.add_argument(
         "--validation_t0_file",
-        default="validation_dynamic_reweighting_forecast_by_t0.csv",
+        default=None,
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    suffix = "_bands" if args.grid_source == "bands" else ""
+    args.calibration_file = args.calibration_file or (
+        f"calibration_dynamic_reweighting_forecast{suffix}.csv"
+    )
+    args.validation_file = args.validation_file or (
+        f"validation_dynamic_reweighting_forecast{suffix}.csv"
+    )
+    args.validation_t0_file = args.validation_t0_file or (
+        f"validation_dynamic_reweighting_forecast_by_t0{suffix}.csv"
+    )
+    return args
 
 
 def parameter_grid(grid_source):

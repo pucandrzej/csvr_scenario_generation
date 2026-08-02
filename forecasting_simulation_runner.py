@@ -42,7 +42,7 @@ start = args.start_delivery
 end = args.end_delivery
 processes = int(args.processes)
 
-PROBAB_APPROACHES = ["weather_scenarios"]
+PROBAB_APPROACHES = ["hist_insample", "weather_scenarios"]
 
 WASSERSTEIN_STOPPING_CRIT = [
     True,
@@ -138,5 +138,7 @@ while invoked < len(joblist):
     line = joblist[invoked]
     print(f"running job {invoked + 1} of {len(joblist)}: {joblist[invoked]}")
     stack.append(subprocess.Popen(line, stderr=sys.stderr, stdout=sys.stdout))
-    stack[-1].wait()  # wait for the process to finish
+    return_code = stack[-1].wait()  # wait for the process to finish
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, line)
     invoked += 1

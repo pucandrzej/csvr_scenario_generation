@@ -49,13 +49,12 @@ def fill_march_dst_daily(df, col):
     dst_gaps = df[(df.index >= required_start) & df[col].isna()].index
     print(f"DST GAPS: {dst_gaps} {col}")
 
-    # Fill missing values using average of Hour 2 and Hour 3 (before and after gap)
+    # Carry forward the previous day's values to avoid future information
+    df = df.copy(deep=True)
     for ts in dst_gaps:
         before = ts - pd.Timedelta(days=1)
-        after = ts + pd.Timedelta(days=1)
-        if before in df.index and after in df.index:
-            df = df.copy(deep=True)
-            df.loc[ts] = (df.loc[before] + df.loc[after]) / 2
+        if before in df.index:
+            df.loc[ts] = df.loc[before]
     return df
 
 
