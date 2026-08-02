@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
             else:
                 result_dir = BENCHMARK_RESULTS_DIR
-                for required_scenarios in repeated_required_scenarios_list:
+                for required_scenarios in limited_scenarios_number:
                     inputlist.append(
                         [
                             "benchmark",
