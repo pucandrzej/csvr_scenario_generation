@@ -25,7 +25,7 @@ To generate figures a full LaTeX installation is required. Requirements for text
 The raw data is stored in the `Data` directory. In this repository it contains the exogenous variables used in the forecasting study: crossborder physical flows, day-ahead quarter-hourly German market electricity prices, SPV and wind generation actual values and forecasts and load actual values and forecasts.
 All of the aforementioned data was sourced from ENTSO-E.
 
-The non-public directories are not attached in `Data`: `Intraday_auction` and `Transactions/`. Data stored in these directories is a part of a package "DE Trades on the continuous market - Histo (up to Y-1)":
+The non-public directories are not attached in `Data`: `Intraday_Auction` and `Transactions/`. Data stored in these directories is a part of a package "DE Trades on the continuous market - Histo (up to Y-1)":
 https://webshop.eex-group.com/data-type/de-trades-continuous-market-histo-y-1. The data has been purchased from the EXPEX Spot under University License, under which the Contracting Party is entitled to a limited Internal Usage in unchanged format according to Section 3 of the General Conditions, specifically for educational and academic research purposes and publication of results of analysis and research. The Agreement with the EPEX Spot do not allow to transfer the data to third Parties. It can be accessed through EPEX Spot sFTP server. The yearly cost of this access is equal to 480EUR.
 
 ## Hardware requirements and expected runtime
@@ -41,11 +41,11 @@ If your goal is to run the complete simulation, please follow the steps below.
 ### Preprocess the data
 Store the downloaded EPEX Spot continuous market transactions in yearly directories in `Data/Transactions/` folder/ In this study, these are `2018`, `2019` and `2020` directories containing daily `.csv` files with transactions corresponding to this delivery date.
 
-Run the `continuous_market_data_preprocessing.py` to preprocess the data in line with preprocessing approach described in the paper.
+First, use `exogenous_data_preprocessing.py` to concatenate the yearly ENTSO-E CSV files and handle daylight-saving-time transitions.
 
-Run the `elasticities_computation.py` to calculate the elasticities.
+Next, run `continuous_market_data_preprocessing.py` to preprocess the continuous-market data as described in the paper.
 
-Use the `exogenous_data_preprocessing.py` script for concatenation of ENTSO-E yearly csvs and dst handling.
+Finally, run `elasticities_computation.py` to calculate the elasticities.
 
 ### Run the simulation
 Run the `forecasting_simulation_runner.py` script to schedule all of the cSVR simulations.
