@@ -34,9 +34,9 @@ from utils import (
 
 DEVEL_PLOTS = False  # if True the function will generate a plotly go interactive plot of elasticities, use ONLY with debugger - you will generate too many figures otherwise!
 VOLUME_DELTAS = [
+    125,
+    250,
     500,
-    1000,
-    2000,
 ]
 LOWER_TECHNICAL_MINIMUM = -3000  # technical min. price on intraday auction market
 
