@@ -6,7 +6,11 @@ import pandas as pd
 import subprocess
 import numpy as np
 
-from config.paths import LOGS_DIR, CALIBRATION_STRATEGIES_MEASURES_DIR
+from config.paths import (
+    LOGS_DIR,
+    CALIBRATION_STRATEGIES_MEASURES_DIR,
+    RAW_STRATEGY_RESULTS_DIR,
+)
 
 import argparse
 
@@ -16,7 +20,16 @@ parser.add_argument(
     default="32",
     help="No of parallel processes in underlying simulation.",
 )
+parser.add_argument("--special_results_directory")
 args = parser.parse_args()
+
+calibration_results_dir = CALIBRATION_STRATEGIES_MEASURES_DIR
+if args.special_results_directory:
+    calibration_results_dir = os.path.join(
+        args.special_results_directory,
+        RAW_STRATEGY_RESULTS_DIR,
+        "CALIBRATION_MEASURES",
+    )
 
 # redirect all stdout/stderr to file
 sys.stdout = open(os.path.join(LOGS_DIR, "STRATEGIES_VALIDATION_RUNNER.txt"), "w")
@@ -50,12 +63,12 @@ def parse_file_flags(filename):
     return flags
 
 
-for file in os.listdir(CALIBRATION_STRATEGIES_MEASURES_DIR):
+for file in os.listdir(calibration_results_dir):
     print("\n" + "=" * 80)
     print(f"RUNNING BEST MODELS BASED ON CALIBRATION RESULT FROM {file}")
     print("=" * 80)
 
-    df = pd.read_csv(os.path.join(CALIBRATION_STRATEGIES_MEASURES_DIR, file))
+    df = pd.read_csv(os.path.join(calibration_results_dir, file))
 
     for weighting_type in ["_", "kernel", "mae"]:  # "_" is the static strategy
         weighting_type_df = df[df["weights"] == weighting_type]
@@ -100,6 +113,11 @@ for file in os.listdir(CALIBRATION_STRATEGIES_MEASURES_DIR):
                 "--test_subdir",
                 weighting_type.replace("_", "static"),
             ]
+
+            if args.special_results_directory:
+                cmd.extend(
+                    ["--special_results_directory", args.special_results_directory]
+                )
 
             if flags["one_sided"]:
                 cmd.append("--one_sided")

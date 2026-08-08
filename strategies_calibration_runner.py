@@ -17,6 +17,7 @@ parser.add_argument(
     default="32",
     help="No of parallel processes in underlying simulation.",
 )
+parser.add_argument("--special_results_directory")
 args = parser.parse_args()
 
 sys.stderr = open(
@@ -47,6 +48,11 @@ for model in ["median", "bands"]:
                 + ["--model", model]
                 + ["--processes", args.processes]
                 + ["--band_type", band_type]
+                + (
+                    ["--special_results_directory", args.special_results_directory]
+                    if args.special_results_directory
+                    else []
+                )
             )
 
 invoked = 0

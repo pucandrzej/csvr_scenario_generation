@@ -1,3 +1,4 @@
+import argparse
 import os
 import pandas as pd
 import numpy as np
@@ -11,7 +12,14 @@ from config.test_calibration_validation import (
     validation_window_start,
     validation_window_end,
 )
-from config.paths import BENCHMARK_RESULTS_DIR, MODEL_RESULTS_DIR, MAE_CRPS_RESULTS_DIR
+from config.paths import (
+    BENCHMARK_RESULTS_DIR,
+    MODEL_RESULTS_DIR,
+    MAE_CRPS_RESULTS_DIR,
+    RAW_BENCHMARK_RESULTS_DIR,
+    RAW_MODEL_RESULTS_DIR,
+    RAW_MAE_CRPS_RESULTS_DIR,
+)
 from config.forecasting_simulation_config import last_trade_time_in_path_delta, deliveries_no
 
 probab_approaches = ["weather_scenarios", "hist_insample", "benchmark"]
@@ -36,14 +44,15 @@ def get_pinball_from_csvr(inp):
     scenarios_sampling_method = inp[4]
     required_scenarios = inp[5]
     probab_approach = inp[6]
+    output_dir = inp[7]
     trade_time = delivery * 3 + last_trade_time_in_path_delta
 
     pinball_path = os.path.join(
-        MAE_CRPS_RESULTS_DIR,
+        output_dir,
         f"CRPS_{probab_approach}_{model_name}_{delivery}_{wasserstein_stopping_crit}_{scenarios_sampling_method}_{required_scenarios}.csv",
     )
     mae_path = os.path.join(
-        MAE_CRPS_RESULTS_DIR,
+        output_dir,
         f"MAE_{probab_approach}_{model_name}_{delivery}_{wasserstein_stopping_crit}_{scenarios_sampling_method}_{required_scenarios}.csv",
     )
 
@@ -68,7 +77,9 @@ def get_pinball_from_csvr(inp):
             "test_"
         ):  # we only want to extract validation (test) window results here
             df = pd.read_csv(
-                os.path.join(results_dir, results_subdir, fil), index_col=0
+                os.path.join(results_dir, results_subdir, fil),
+                usecols=lambda c: c == "actual"
+                or (c.startswith(model_name) and "base_path" not in c),
             )
             model_cols = [
                 c
@@ -129,7 +140,30 @@ def get_pinball_from_csvr(inp):
     return qra_pinball_score_df, qra_mae_df
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--processes", default=32, type=int)
+    parser.add_argument("--special_results_directory")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
+    model_results_dir = MODEL_RESULTS_DIR
+    benchmark_results_dir = BENCHMARK_RESULTS_DIR
+    output_dir = MAE_CRPS_RESULTS_DIR
+    if args.special_results_directory:
+        model_results_dir = os.path.join(
+            args.special_results_directory, RAW_MODEL_RESULTS_DIR
+        )
+        benchmark_results_dir = os.path.join(
+            args.special_results_directory, RAW_BENCHMARK_RESULTS_DIR
+        )
+        output_dir = os.path.join(
+            args.special_results_directory, RAW_MAE_CRPS_RESULTS_DIR
+        )
+    os.makedirs(output_dir, exist_ok=True)
+
     model_names = ["CHAIN_prediction", "MULTI_prediction"]
     deliveries = range(deliveries_no)
 
@@ -138,7 +172,7 @@ if __name__ == "__main__":
     for probab_approach in probab_approaches:
         for delivery in deliveries:
             if probab_approach != "benchmark":
-                results_dir = MODEL_RESULTS_DIR
+                results_dir = model_results_dir
                 for model_name in model_names:
                     for (
                         wasserstein_stopping_crit,
@@ -158,11 +192,12 @@ if __name__ == "__main__":
                                 scenarios_sampling_method,
                                 required_scenarios,
                                 probab_approach,
+                                output_dir,
                             ]
                         )
 
             else:
-                result_dir = BENCHMARK_RESULTS_DIR
+                result_dir = benchmark_results_dir
                 for required_scenarios in limited_scenarios_number:
                     inputlist.append(
                         [
@@ -173,10 +208,11 @@ if __name__ == "__main__":
                             None,
                             required_scenarios,
                             probab_approach,
+                            output_dir,
                         ]
                     )
 
     print(f"Running {len(inputlist)} tasks")
 
-    with Pool(processes=32) as p:
+    with Pool(processes=args.processes) as p:
         _ = p.map(get_pinball_from_csvr, inputlist)

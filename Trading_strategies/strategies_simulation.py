@@ -19,6 +19,9 @@ from config.paths import (
     MODEL_RESULTS_DIR,
     BENCHMARK_RESULTS_DIR,
     PAPER_FIGURES_DIR,
+    RAW_MODEL_RESULTS_DIR,
+    RAW_BENCHMARK_RESULTS_DIR,
+    RAW_STRATEGY_RESULTS_DIR,
 )
 from .strategies_utils import (
     # STRATEGY QUALITY MEASURES UTILS
@@ -187,7 +190,31 @@ parser.add_argument(
     help="Path to subdirectory; we need this split to safely calculate test results for kernel, MAE and static strategies separately.",
 )
 parser.add_argument("--processes", default=1, help="No of processes")
+parser.add_argument("--special_results_directory")
 args = parser.parse_args()
+
+if args.special_results_directory:
+    MODEL_RESULTS_DIR = os.path.join(args.special_results_directory, RAW_MODEL_RESULTS_DIR)
+    BENCHMARK_RESULTS_DIR = os.path.join(
+        args.special_results_directory, RAW_BENCHMARK_RESULTS_DIR
+    )
+    strategy_results_dir = os.path.join(
+        args.special_results_directory, RAW_STRATEGY_RESULTS_DIR
+    )
+    CALIBRATION_PICKLES_DIR = os.path.join(strategy_results_dir, "CALIBRATION_PICKLES")
+    CALIBRATION_STRATEGIES_MEASURES_DIR = os.path.join(
+        strategy_results_dir, "CALIBRATION_MEASURES"
+    )
+    TEST_STRATEGIES_MEASURES_DIR = os.path.join(strategy_results_dir, "TEST_MEASURES")
+    for directory in [
+        CALIBRATION_PICKLES_DIR,
+        CALIBRATION_STRATEGIES_MEASURES_DIR,
+        *(
+            os.path.join(TEST_STRATEGIES_MEASURES_DIR, subdir)
+            for subdir in ["kernel", "mae", "static"]
+        ),
+    ]:
+        os.makedirs(directory, exist_ok=True)
 
 # define the underlying ensemble forecasting configurations
 if args.underlying_model is None:
