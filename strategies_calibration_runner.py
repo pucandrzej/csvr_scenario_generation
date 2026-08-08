@@ -18,6 +18,7 @@ parser.add_argument(
     help="No of parallel processes in underlying simulation.",
 )
 parser.add_argument("--special_results_directory")
+parser.add_argument("--model", choices=["median", "bands"])
 args = parser.parse_args()
 
 sys.stderr = open(
@@ -30,7 +31,7 @@ sys.stdout = open(
 )
 
 joblist = []
-for model in ["median", "bands"]:
+for model in [args.model] if args.model else ["median", "bands"]:
     if model == "bands":
         bands_types = ["risk_seeking", "risk_averse"]
     else:
