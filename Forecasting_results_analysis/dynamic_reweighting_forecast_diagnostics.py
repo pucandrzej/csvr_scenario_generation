@@ -8,7 +8,12 @@ import pandas as pd
 from tqdm import tqdm
 
 from config.forecasting_simulation_config import deliveries_no
-from config.paths import BENCHMARK_RESULTS_DIR, MODEL_RESULTS_DIR
+from config.paths import (
+    BENCHMARK_RESULTS_DIR,
+    MODEL_RESULTS_DIR,
+    RAW_BENCHMARK_RESULTS_DIR,
+    RAW_MODEL_RESULTS_DIR,
+)
 from config.test_calibration_validation import (
     calibration_window_length,
     validation_window_length,
@@ -47,17 +52,19 @@ def _delivery_tasks(
     run_type,
     delivery_index=None,
     daily_file=None,
+    special_results_directory=None,
 ):
     """Build one worker task per delivery directory.
 
     Optional delivery and filename filters are used only for focused checks;
     normal calibration and validation cover the complete dataset.
     """
-    results_dir = (
-        BENCHMARK_RESULTS_DIR
-        if column_name == "benchmark_prediction"
-        else MODEL_RESULTS_DIR
-    )
+    if column_name == "benchmark_prediction":
+        results_dir, raw_dir = BENCHMARK_RESULTS_DIR, RAW_BENCHMARK_RESULTS_DIR
+    else:
+        results_dir, raw_dir = MODEL_RESULTS_DIR, RAW_MODEL_RESULTS_DIR
+    if special_results_directory:
+        results_dir = os.path.join(special_results_directory, raw_dir)
     directories = sorted(
         (name for name in os.listdir(results_dir) if name.endswith(model_setting)),
         key=lambda name: int(name.split("_")[3]),
@@ -219,6 +226,7 @@ def evaluate_parameter_grid(
     delivery_index=None,
     daily_file=None,
     return_per_t0=False,
+    special_results_directory=None,
 ):
     """Evaluate a weighting grid in one pass over calibration or test CSVs.
 
@@ -234,6 +242,7 @@ def evaluate_parameter_grid(
         run_type,
         delivery_index,
         daily_file,
+        special_results_directory,
     )
     _validate_tasks(tasks, run_type, delivery_index, daily_file)
 

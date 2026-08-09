@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 
-from config.paths import MAE_CRPS_RESULTS_DIR
+from config.paths import MAE_CRPS_RESULTS_DIR, RAW_MAE_CRPS_RESULTS_DIR
 from config.trading_strategies_calibration_config import (
     bands_grid_config,
     median_grid_config,
@@ -30,6 +30,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--grid_source", default="median", choices=["median", "bands"])
     parser.add_argument("--processes", default=32, type=int)
+    parser.add_argument("--special_results_directory")
     parser.add_argument(
         "--model_setting",
         choices=[model_setting for model_setting, _ in MODEL_CONFIGS],
@@ -69,9 +70,14 @@ def parameter_grid(grid_source):
     ]
 
 
-def result_path(filename):
+def result_path(filename, special_results_directory=None):
     """Resolve relative result filenames inside the MAE/CRPS output directory."""
-    return filename if os.path.isabs(filename) else os.path.join(MAE_CRPS_RESULTS_DIR, filename)
+    if os.path.isabs(filename):
+        return filename
+    directory = MAE_CRPS_RESULTS_DIR
+    if special_results_directory:
+        directory = os.path.join(special_results_directory, RAW_MAE_CRPS_RESULTS_DIR)
+    return os.path.join(directory, filename)
 
 
 def parameter_key(method, p, lambda_):
@@ -138,9 +144,11 @@ def best_kernel_parameters(calibration, model_setting, column_name):
 def main():
     """Start or resume calibration, select both optima, and run their validation."""
     args = parse_args()
-    calibration_path = result_path(args.calibration_file)
-    validation_path = result_path(args.validation_file)
-    validation_t0_path = result_path(args.validation_t0_file)
+    calibration_path = result_path(args.calibration_file, args.special_results_directory)
+    validation_path = result_path(args.validation_file, args.special_results_directory)
+    validation_t0_path = result_path(args.validation_t0_file, args.special_results_directory)
+    for path in [calibration_path, validation_path, validation_t0_path]:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     parameters = parameter_grid(args.grid_source)
     model_configs = [
         config
@@ -166,6 +174,7 @@ def main():
             pending,
             run_type="calibration",
             processes=args.processes,
+            special_results_directory=args.special_results_directory,
         )
         append_results(results, calibration_path)
 
@@ -182,6 +191,7 @@ def main():
             run_type="test",
             processes=args.processes,
             return_per_t0=True,
+            special_results_directory=args.special_results_directory,
         )
         results.insert(0, "selected_by", [metric for metric, _ in selected])
         per_t0.insert(
