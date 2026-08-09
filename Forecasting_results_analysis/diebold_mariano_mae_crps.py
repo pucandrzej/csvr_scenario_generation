@@ -7,13 +7,15 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
 from tqdm import tqdm
 
+from Forecasting_results_analysis.diebold_mariano_plotting import (
+    paper_label,
+    plot_dm,
+)
 from config.forecasting_simulation_config import (
     deliveries_no,
     forecasting_horizon,
@@ -21,10 +23,12 @@ from config.forecasting_simulation_config import (
 )
 from config.paths import (
     BENCHMARK_RESULTS_DIR,
-    MAE_CRPS_RESULTS_DIR,
+    DM_MAE_CRPS_RESULTS_DIR,
     MODEL_RESULTS_DIR,
     PAPER_FIGURES_DIR,
-    ROOT,
+    RAW_BENCHMARK_RESULTS_DIR,
+    RAW_DM_MAE_CRPS_RESULTS_DIR,
+    RAW_MODEL_RESULTS_DIR,
 )
 from config.test_calibration_validation import (
     validation_window_end,
@@ -36,7 +40,22 @@ from config.test_calibration_validation import (
 TAUS = np.linspace(0.01, 0.99, 99)
 N_DAYS = validation_window_length
 N_DELIVERIES = deliveries_no
-LOSS_CACHE_DIR = Path(MAE_CRPS_RESULTS_DIR) / "DM_LOSSES"
+DM_RESULTS_DIR = Path(DM_MAE_CRPS_RESULTS_DIR)
+LOSS_CACHE_DIR = DM_RESULTS_DIR / "LOSSES"
+
+
+@dataclass(frozen=True)
+class DMDirectories:
+    """Input and numerical-output directories for one DM run."""
+
+    model_results: Path
+    benchmark_results: Path
+    dm_results: Path
+
+    @property
+    def loss_cache(self):
+        """Return the cache directory associated with this run."""
+        return self.dm_results / "LOSSES"
 
 
 @dataclass(frozen=True)
@@ -58,36 +77,52 @@ class ForecastConfig:
 
     @property
     def label(self):
-        """Return the compact configuration label used in plots."""
-        window = "all" if self.required_scenarios == "None" else self.required_scenarios
-        if self.approach == "benchmark":
-            return f"BENCH/{window}"
-        source = "HIST" if self.approach == "hist_insample" else "WEATHER"
-        model = self.column.removesuffix("_prediction")
-        method = "dual" if self.wasserstein else "plain"
-        return f"{source}/{model}/{method}/{window}"
+        """Return the paper-style configuration label used in plots."""
+        return paper_label(self)
 
 
 def forecast_configs():
     """Return the 27 configurations used in the MAE/CRPS study tables."""
     configs = [
         ForecastConfig("benchmark", "benchmark_prediction", window)
-        for window in ("None", 28, 182)
+        for window in (28, 182, "None")
     ]
     for approach in ("hist_insample", "weather_scenarios"):
         for column in ("MULTI_prediction", "CHAIN_prediction"):
-            for window in ("None", 28, 182):
+            for wasserstein, sampling in ((True, "dual_coeff"), (False, None)):
                 configs.extend(
-                    [
-                        ForecastConfig(approach, column, window, True, "dual_coeff"),
-                        ForecastConfig(approach, column, window),
-                    ]
+                    ForecastConfig(
+                        approach,
+                        column,
+                        window,
+                        wasserstein,
+                        sampling,
+                    )
+                    for window in (28, 182, "None")
                 )
     return configs
 
 
-def _result_directory(config, delivery):
+def _resolve_directories(special_results_directory=None):
+    """Resolve all non-figure directories from an optional alternate root."""
+    if special_results_directory is None:
+        return DMDirectories(
+            model_results=Path(MODEL_RESULTS_DIR),
+            benchmark_results=Path(BENCHMARK_RESULTS_DIR),
+            dm_results=DM_RESULTS_DIR,
+        )
+
+    root = Path(special_results_directory)
+    return DMDirectories(
+        model_results=root / RAW_MODEL_RESULTS_DIR,
+        benchmark_results=root / RAW_BENCHMARK_RESULTS_DIR,
+        dm_results=root / RAW_DM_MAE_CRPS_RESULTS_DIR,
+    )
+
+
+def _result_directory(config, delivery, directories=None):
     """Return the raw-results directory for one configuration and delivery."""
+    directories = directories or _resolve_directories()
     trade_time = delivery * 3 + last_trade_time_in_path_delta
     common = (
         f"{validation_window_start}_{validation_window_end}_364_{delivery}_"
@@ -95,12 +130,12 @@ def _result_directory(config, delivery):
     )
     if config.approach == "benchmark":
         name = f"{common}_____{config.required_scenarios}____"
-        return Path(BENCHMARK_RESULTS_DIR) / name
+        return directories.benchmark_results / name
     name = (
         f"{common}_{config.approach}_{config.required_scenarios}_"
         f"{config.wasserstein}_{config.sampling}"
     )
-    return Path(MODEL_RESULTS_DIR) / name
+    return directories.model_results / name
 
 
 def _daily_losses(path, column):
@@ -128,9 +163,9 @@ def _daily_losses(path, column):
     return np.mean(np.abs(actual - median)), np.mean(pinball), actual
 
 
-def _delivery_losses(delivery, config):
+def _delivery_losses(delivery, config, directories=None):
     """Calculate daily MAE and CRPS series for one delivery and configuration."""
-    directory = _result_directory(config, delivery)
+    directory = _result_directory(config, delivery, directories)
     files = sorted(directory.glob("test_*.csv"))
     if len(files) != N_DAYS:
         raise ValueError(
@@ -148,10 +183,11 @@ def _delivery_losses(delivery, config):
     return delivery, mae, crps, actual_hash.hexdigest()
 
 
-def _config_losses(config, pool, recompute=False):
+def _config_losses(config, pool, recompute=False, directories=None):
     """Load or calculate day-by-delivery loss matrices for one configuration."""
-    LOSS_CACHE_DIR.mkdir(exist_ok=True)
-    cache = LOSS_CACHE_DIR / f"{config.key}.npz"
+    directories = directories or _resolve_directories()
+    directories.loss_cache.mkdir(parents=True, exist_ok=True)
+    cache = directories.loss_cache / f"{config.key}.npz"
     if cache.exists() and not recompute:
         with np.load(cache) as data:
             mae, crps, hashes = data["mae"], data["crps"], data["actual_hashes"]
@@ -159,7 +195,7 @@ def _config_losses(config, pool, recompute=False):
             raise ValueError(f"Invalid cache shape in {cache}; rerun with --recompute")
         return mae, crps, hashes
 
-    worker = partial(_delivery_losses, config=config)
+    worker = partial(_delivery_losses, config=config, directories=directories)
     rows = list(
         tqdm(
             pool.imap(worker, range(N_DELIVERIES)),
@@ -199,52 +235,28 @@ def pairwise_dm(losses):
     return p_values
 
 
-def _dm_colormap():
-    """Return the green-yellow-red-black colormap used for DM p-values."""
-    red = np.r_[np.linspace(0, 1, 50), np.linspace(1, 0.5, 50)[1:], 0]
-    green = np.r_[np.linspace(0.5, 1, 50), np.zeros(50)]
-    cmap = mpl.colors.ListedColormap(np.c_[red, green, np.zeros(100)])
-    cmap.set_bad("0.65")
-    return cmap
-
-
-def plot_dm(p_values, labels, metric, output_stem):
-    """Write the complete Weron-style p-value heatmap as PNG and PDF."""
-    shown = p_values.copy()
-    np.fill_diagonal(shown, np.nan)
-    with plt.style.context(Path(ROOT) / "paper_style.mplstyle"):
-        mpl.rcParams["text.usetex"] = False
-        mpl.rcParams["font.serif"] = ["DejaVu Serif"]
-        fig, ax = plt.subplots(figsize=(12, 10))
-        image = ax.imshow(shown, cmap=_dm_colormap(), vmin=0, vmax=0.1)
-        ticks = np.arange(len(labels))
-        ax.set_xticks(ticks, labels, rotation=90)
-        ax.set_yticks(ticks, labels)
-        ax.plot(ticks, ticks, "x", color="0.2", markersize=5, markeredgewidth=0.7)
-        ax.set(xlabel="Model 1", ylabel="Model 2", title=f"DM test - {metric}")
-        ax.tick_params(axis="both", length=0, labelsize=5.5)
-        colorbar = fig.colorbar(image, ax=ax, fraction=0.04, pad=0.03)
-        colorbar.set_label("p-value")
-        colorbar.set_ticks([0, 0.025, 0.05, 0.075, 0.1])
-        fig.tight_layout()
-        fig.savefig(output_stem.with_suffix(".png"), dpi=300, bbox_inches="tight")
-        fig.savefig(output_stem.with_suffix(".pdf"), bbox_inches="tight")
-        plt.close(fig)
-
-
 def parse_args():
-    """Parse command-line options for worker count and cache replacement."""
+    """Parse command-line options for paths, workers, and cache replacement."""
     parser = argparse.ArgumentParser(
         description="Run 27-case multivariate DM tests for MAE and CRPS."
     )
     parser.add_argument("--processes", type=int, default=32)
     parser.add_argument("--recompute", action="store_true")
+    parser.add_argument(
+        "--special_results_directory",
+        type=Path,
+        help=(
+            "Alternate root containing the forecast-result directories and "
+            "receiving DM_MAE_CRPS_RESULTS"
+        ),
+    )
     return parser.parse_args()
 
 
 def main():
     """Calculate, save, and plot the MAE and CRPS DM comparisons."""
     args = parse_args()
+    directories = _resolve_directories(args.special_results_directory)
     configs = forecast_configs()
     if len(configs) != 27:
         raise RuntimeError(f"Expected 27 configurations, found {len(configs)}")
@@ -253,7 +265,12 @@ def main():
     reference_hashes = None
     with Pool(args.processes) as pool:
         for config in configs:
-            mae, crps, hashes = _config_losses(config, pool, args.recompute)
+            mae, crps, hashes = _config_losses(
+                config,
+                pool,
+                recompute=args.recompute,
+                directories=directories,
+            )
             if reference_hashes is not None and not np.array_equal(
                 hashes, reference_hashes
             ):
@@ -265,9 +282,10 @@ def main():
     labels = [config.label for config in configs]
     keys = [config.key for config in configs]
     output_dir = Path(PAPER_FIGURES_DIR)
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    directories.dm_results.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"configuration": keys, "plot_label": labels}).to_csv(
-        Path(MAE_CRPS_RESULTS_DIR) / "DM_model_labels.csv", index=False
+        directories.dm_results / "DM_model_labels.csv", index=False
     )
 
     for metric, losses in (
@@ -277,9 +295,9 @@ def main():
         print(f"Calculating {metric} DM matrix", flush=True)
         p_values = pairwise_dm(losses)
         pd.DataFrame(p_values, index=keys, columns=keys).to_csv(
-            Path(MAE_CRPS_RESULTS_DIR) / f"DM_{metric}_p_values.csv"
+            directories.dm_results / f"DM_{metric}_p_values.csv"
         )
-        plot_dm(p_values, labels, metric, output_dir / f"DM_{metric}")
+        plot_dm(p_values, configs, metric, output_dir / f"DM_{metric}")
 
 
 if __name__ == "__main__":
