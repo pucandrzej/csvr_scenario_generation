@@ -3,10 +3,11 @@
 import argparse
 import itertools
 import os
+import sys
 
 import pandas as pd
 
-from config.paths import MAE_CRPS_RESULTS_DIR, RAW_MAE_CRPS_RESULTS_DIR
+from config.paths import LOGS_DIR, MAE_CRPS_RESULTS_DIR, RAW_MAE_CRPS_RESULTS_DIR
 from config.trading_strategies_calibration_config import (
     bands_grid_config,
     median_grid_config,
@@ -145,6 +146,9 @@ def best_kernel_parameters(calibration, model_setting, column_name):
 def main():
     """Start or resume calibration, select both optima, and run their validation."""
     args = parse_args()
+    sys.stdout = sys.stderr = open(
+        os.path.join(LOGS_DIR, "REWEIGHTING_MAE_CRPS_RUNNER.txt"), "w", buffering=1
+    )
     calibration_path = result_path(args.calibration_file, args.special_results_directory)
     validation_path = result_path(args.validation_file, args.special_results_directory)
     validation_t0_path = result_path(args.validation_t0_file, args.special_results_directory)
