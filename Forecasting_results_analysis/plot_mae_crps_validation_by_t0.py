@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from config.paths import MAE_CRPS_RESULTS_DIR, PAPER_FIGURES_DIR
+from config.paths import GENERAL_STRATEGY_RESULTS, PAPER_FIGURES_DIR
 
 
 def parse_args():
@@ -103,7 +103,9 @@ def main():
     input_path = (
         args.input_file
         if os.path.isabs(args.input_file)
-        else os.path.join(MAE_CRPS_RESULTS_DIR, args.input_file)
+        else os.path.join(
+            GENERAL_STRATEGY_RESULTS, "REWEIGHTING_MAE_CRPS", args.input_file
+        )
     )
     results = pd.read_csv(input_path)
     if args.model_setting:

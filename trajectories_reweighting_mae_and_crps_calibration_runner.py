@@ -7,7 +7,7 @@ import sys
 
 import pandas as pd
 
-from config.paths import LOGS_DIR, MAE_CRPS_RESULTS_DIR, RAW_MAE_CRPS_RESULTS_DIR
+from config.paths import GENERAL_STRATEGY_RESULTS, LOGS_DIR, RAW_STRATEGY_RESULTS_DIR
 from config.trading_strategies_calibration_config import (
     bands_grid_config,
     median_grid_config,
@@ -76,9 +76,13 @@ def result_path(filename, special_results_directory=None):
     """Resolve relative result filenames inside the MAE/CRPS output directory."""
     if os.path.isabs(filename):
         return filename
-    directory = MAE_CRPS_RESULTS_DIR
+    directory = os.path.join(GENERAL_STRATEGY_RESULTS, "REWEIGHTING_MAE_CRPS")
     if special_results_directory:
-        directory = os.path.join(special_results_directory, RAW_MAE_CRPS_RESULTS_DIR)
+        directory = os.path.join(
+            special_results_directory,
+            RAW_STRATEGY_RESULTS_DIR,
+            "REWEIGHTING_MAE_CRPS",
+        )
     return os.path.join(directory, filename)
 
 
