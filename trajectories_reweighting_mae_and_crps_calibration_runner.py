@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("--grid_source", default="median", choices=["median", "bands"])
     parser.add_argument("--processes", default=32, type=int)
     parser.add_argument("--special_results_directory")
+    parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
         "--model_setting",
         choices=[model_setting for model_setting, _ in MODEL_CONFIGS],
@@ -149,6 +150,8 @@ def main():
     validation_t0_path = result_path(args.validation_t0_file, args.special_results_directory)
     for path in [calibration_path, validation_path, validation_t0_path]:
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        if args.overwrite and os.path.exists(path):
+            os.remove(path)
     parameters = parameter_grid(args.grid_source)
     model_configs = [
         config
