@@ -186,7 +186,8 @@ def main():
     validation_t0_results = []
     for model_setting, column_name in model_configs:
         selected = best_kernel_parameters(calibration, model_setting, column_name)
-        print(f"Validating {model_setting}: MAE-best and CRPS-best", flush=True)
+        selected.append(("mae_weights", ("mae", None, None)))
+        print(f"Validating {model_setting}: MAE-best, CRPS-best and MAE weights", flush=True)
         results, per_t0 = evaluate_parameter_grid(
             model_setting,
             column_name,

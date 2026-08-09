@@ -150,13 +150,19 @@ def _parameter_weights(actual, forecasts, t0, parameters):
     kernel_errors = {}
     result = []
 
-    for _, p, lambda_ in parameters:
-        if lambda_ not in kernel_errors:
-            ages = t0 - np.arange(t0 + 1)
-            time_weights = np.exp(-lambda_ * ages)
-            time_weights /= time_weights.sum()
-            kernel_errors[lambda_] = time_weights @ (differences ** 2)
-        unscaled = np.exp(-width * kernel_errors[lambda_] ** (p / 2))
+    for method, p, lambda_ in parameters:
+        if method == "mae":
+            safe_differences = np.where(differences == 0, 1e-6, differences)
+            unscaled = 1 / np.mean(np.abs(safe_differences), axis=0)
+        elif method == "kernel":
+            if lambda_ not in kernel_errors:
+                ages = t0 - np.arange(t0 + 1)
+                time_weights = np.exp(-lambda_ * ages)
+                time_weights /= time_weights.sum()
+                kernel_errors[lambda_] = time_weights @ (differences ** 2)
+            unscaled = np.exp(-width * kernel_errors[lambda_] ** (p / 2))
+        else:
+            raise ValueError(f"Unknown weighting method: {method}")
 
         total = unscaled.sum()
         result.append(
