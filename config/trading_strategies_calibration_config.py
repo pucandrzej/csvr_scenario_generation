@@ -1,12 +1,13 @@
 import numpy as np
 
-bands_grid_config = { # TODO zawęź na podstawie wyników dla strategii z mediany
+bands_grid_config = {
     'scp': np.arange(0.05, 1.00, 0.05),
-    'p_list': [0.5, 0.75, 1.0, 1.25, 1.75, 2.0],
-    'lambda_list': [0.05, 0.1, 0.2, 0.35, 0.4, 0.5],
+    'p_list': [0.25, 0.5, 1.25, 1.75, 2.75],
+    'lambda_list': [0.0, 0.05, 0.35, 0.4, 0.45, 0.5],
     'trust_threshold_method': [
-        "iqr",
-        "5_95_IPR", # IPR: InterPercentile Range
+        '3sigma',
+        '5_95_IPR', # IPR: InterPercentile Range
+        'iqr'
     ],
     'parameter_method_1': ["kernel"],
     'parameter_method_2': ["mae"]
