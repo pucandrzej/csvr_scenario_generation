@@ -20,7 +20,7 @@ median_grid_config = {
         0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7,  # one every 0.05 up to 0.7
         0.8, 0.9, 1.0,  # then one every 0.1 up to 1
         1.25, 1.5,  # two 0.25 apart
-        2, 3  # two 1 apart
+        2, 3, 4, 5  # four 1 apart
         ],
     'trust_threshold_method': [
         "3sigma",
