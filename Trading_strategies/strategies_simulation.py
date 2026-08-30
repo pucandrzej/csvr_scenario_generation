@@ -194,7 +194,9 @@ parser.add_argument("--special_results_directory")
 args = parser.parse_args()
 
 if args.special_results_directory:
-    MODEL_RESULTS_DIR = os.path.join(args.special_results_directory, RAW_MODEL_RESULTS_DIR)
+    MODEL_RESULTS_DIR = os.path.join(
+        args.special_results_directory, RAW_MODEL_RESULTS_DIR
+    )
     BENCHMARK_RESULTS_DIR = os.path.join(
         args.special_results_directory, RAW_BENCHMARK_RESULTS_DIR
     )
@@ -234,7 +236,7 @@ if args.underlying_model_column is None:
         "MULTI_prediction",
         "benchmark_prediction",
         "MULTI_prediction",
-        "MULTI_prediction"
+        "MULTI_prediction",
     ]
 else:
     columns_names = [args.underlying_model_column]
@@ -280,9 +282,7 @@ def iterate_over_probab_results_and_prepare_measure(inp):
     ):
         measure_values_day = []
 
-        df = pd.read_csv(
-            os.path.join(results_dir, dir_name, daily_file), index_col=0
-        )
+        df = pd.read_csv(os.path.join(results_dir, dir_name, daily_file), index_col=0)
         actual = df["actual"].values
         if args.model in ["wca", "pwca"]:
             naive = df["naive"].values
@@ -321,9 +321,7 @@ def iterate_over_probab_results_and_prepare_measure(inp):
                 )
             )
         elif args.model in ["naive_1", "naive_30"]:
-            measure_values_day.append(
-                measure_func(actual, args.one_sided)
-            )
+            measure_values_day.append(measure_func(actual, args.one_sided))
         elif args.model == "wca":
             measure_values_day.append(measure_func(actual, fore, naive))
         elif args.model == "pwca":

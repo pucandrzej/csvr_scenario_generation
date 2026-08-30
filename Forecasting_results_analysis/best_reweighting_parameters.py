@@ -1,4 +1,5 @@
-"""Export paper-ready MAE- and CRPS-optimal reweighting parameters."""
+"""Export paper-ready MAE- and CRPS-optimal
+path scenarios reweighting parameters."""
 
 import argparse
 from pathlib import Path

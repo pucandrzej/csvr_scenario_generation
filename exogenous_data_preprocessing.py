@@ -72,7 +72,9 @@ for cty in BORDER_CTYS:
             index_col=0,
         )["Open"]
         pln_eur.index = pd.to_datetime(pln_eur.index, format="%d-%m-%Y")
-        pln_eur_resampled = pln_eur.sort_index().resample("1h").ffill().shift(24) # we shift by 24h as this is the open price known at day-ahead auction time
+        pln_eur_resampled = (
+            pln_eur.sort_index().resample("1h").ffill().shift(24)
+        )  # we shift by 24h as this is the open price known at day-ahead auction time
         da_price_all_years_dst_corrected.loc[
             da_price_all_years_dst_corrected.index < currency_change_date_PL, "PL"
         ] = (

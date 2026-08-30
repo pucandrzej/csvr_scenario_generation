@@ -1,5 +1,5 @@
 """
-File contains the code for GAMLSS forecast of continuous market prices on DE intraday market.
+File contains the code for naive benchmark forecast of continuous market prices on DE intraday market.
 """
 
 import pandas as pd

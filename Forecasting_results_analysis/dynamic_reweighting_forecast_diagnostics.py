@@ -32,6 +32,7 @@ EXPECTED_DAYS = {
 
 def _read_forecast(path, column_name):
     """Read actuals and the variable number of matching scenario columns."""
+
     def wanted(name):
         """Return whether a CSV column is required for evaluation."""
         return name == "actual" or (
@@ -72,7 +73,10 @@ def _delivery_tasks(
 
     tasks = []
     for directory in directories:
-        if delivery_index is not None and int(directory.split("_")[3]) != delivery_index:
+        if (
+            delivery_index is not None
+            and int(directory.split("_")[3]) != delivery_index
+        ):
             continue
         path = os.path.join(results_dir, directory)
         files = sorted(
@@ -97,10 +101,14 @@ def _validate_tasks(tasks, run_type, delivery_index, daily_file):
 
     indices = sorted(int(task[1].split("_")[3]) for task in tasks)
     if indices != list(range(deliveries_no)):
-        raise ValueError(f"Expected delivery indices 0..{deliveries_no - 1}, got {indices}")
+        raise ValueError(
+            f"Expected delivery indices 0..{deliveries_no - 1}, got {indices}"
+        )
 
     expected_days = EXPECTED_DAYS[run_type]
-    invalid = [(task[1], len(task[2])) for task in tasks if len(task[2]) != expected_days]
+    invalid = [
+        (task[1], len(task[2])) for task in tasks if len(task[2]) != expected_days
+    ]
     if invalid:
         raise ValueError(f"Expected {expected_days} files per delivery, got {invalid}")
 
@@ -134,9 +142,7 @@ def _weighted_quantiles(sorted_values, sort_indices, weights):
             * (cumulative[right[interpolate]] - ALL_QUANTILES[interpolate])
             + values[right[interpolate]]
             * (ALL_QUANTILES[interpolate] - cumulative[left[interpolate]])
-        ) / (
-            cumulative[right[interpolate]] - cumulative[left[interpolate]]
-        )
+        ) / (cumulative[right[interpolate]] - cumulative[left[interpolate]])
         rows.append(quantiles)
     return np.vstack(rows)
 
@@ -159,7 +165,7 @@ def _parameter_weights(actual, forecasts, t0, parameters):
                 ages = t0 - np.arange(t0 + 1)
                 time_weights = np.exp(-lambda_ * ages)
                 time_weights /= time_weights.sum()
-                kernel_errors[lambda_] = time_weights @ (differences ** 2)
+                kernel_errors[lambda_] = time_weights @ (differences**2)
             unscaled = np.exp(-width * kernel_errors[lambda_] ** (p / 2))
         else:
             raise ValueError(f"Unknown weighting method: {method}")
@@ -195,9 +201,7 @@ def _evaluate_delivery(task):
 
         for t0 in range(30):
             future_actual = actual[t0 + 1 :]
-            raw_sums[0, t0] += np.abs(
-                future_actual - raw_medians[t0 + 1 :]
-            ).sum()
+            raw_sums[0, t0] += np.abs(future_actual - raw_medians[t0 + 1 :]).sum()
             raw_sums[1, t0] += _pinball_sum(
                 future_actual,
                 raw_quantiles[t0 + 1 :],
@@ -289,8 +293,12 @@ def evaluate_parameter_grid(
                 "mae_weighted": weighted_mae.mean(),
                 "crps_raw": raw_crps.mean(),
                 "crps_weighted": weighted_crps.mean(),
-                "mae_improvement_pct": np.mean(100 * (raw_mae - weighted_mae) / raw_mae),
-                "crps_improvement_pct": np.mean(100 * (raw_crps - weighted_crps) / raw_crps),
+                "mae_improvement_pct": np.mean(
+                    100 * (raw_mae - weighted_mae) / raw_mae
+                ),
+                "crps_improvement_pct": np.mean(
+                    100 * (raw_crps - weighted_crps) / raw_crps
+                ),
             }
         )
         if return_per_t0:

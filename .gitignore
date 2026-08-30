@@ -241,8 +241,12 @@ TIMING_RESULTS
 # local audit and diagnostic artifacts
 launch.json
 my_todo_notes.txt
+CODEX_AUDIT_NOTES.md
+tmp/
+scenarios_counts_dict.pkl
 Trading_strategies/strategies_utils/test.ipynb
 TEST_DIR/
 PAPER_FIGURES/DM_*.png
-PAPER_FIGURES/dynamic_reweighting_forecast_diagnostics_test_*.html
-PAPER_FIGURES/validation_dynamic_reweighting_by_t0_*.html
+PAPER_FIGURES/*.html
+PAPER_FIGURES/*_revised.pdf
+PAPER_TABLES/strategies_validation*.xlsx

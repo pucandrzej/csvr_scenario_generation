@@ -23,5 +23,5 @@ from .weighting_utils import (
     weighted_median,
     vanilla_band,
     weighted_band,
-    batch_weighted_quantiles
+    batch_weighted_quantiles,
 )

@@ -95,6 +95,7 @@ def weighted_median(values, weights):
         interpolated_value = (nominator_1 + nominator_2) / denominator
         return interpolated_value
 
+
 def _calc_band(M, Y, idx, band_type):
     """
     Compute an upper or lower prediction band for a given index.
@@ -266,6 +267,7 @@ def _calc_weighted_band(Y, idx, band_type):
     elif band_type == "lower":
         B = np.min(Y[:, : idx + 1], axis=1)
     return B
+
 
 def batch_weighted_quantiles(values, weights, qs):
     """Vectorized weighted quantiles — one sort, many q's.

@@ -215,11 +215,15 @@ def dm_p_value(loss_1, loss_2):
     """One-sided epftoolbox-style DM p-value; small values favor loss_2."""
     if loss_1.shape != loss_2.shape or loss_1.ndim != 2:
         raise ValueError("Loss arrays must have equal shape (days, deliveries)")
-    differential = loss_1.mean(axis=1) - loss_2.mean(axis=1) # does not matter to the final result if this is normalized L1 or not, here it is
+    differential = loss_1.mean(axis=1) - loss_2.mean(
+        axis=1
+    )  # does not matter to the final result if this is normalized L1 or not, here it is
     mean = differential.mean()
     variance = differential.var(ddof=0)
     if variance == 0:
-        raise ValueError("Variance of loss measures differences is 0. We do not expect this to happen in this project - please review the inputs.")
+        raise ValueError(
+            "Variance of loss measures differences is 0. We do not expect this to happen in this project - please review the inputs."
+        )
     statistic = mean / np.sqrt(variance / differential.size)
     return float(1 - stats.norm.cdf(statistic))
 

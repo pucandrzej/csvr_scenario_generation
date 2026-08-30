@@ -138,7 +138,13 @@ def one_sided_median_trading_strategy(
             )
 
         break_condition, profit, planned_entry, played = seller_strategy_correction(
-            cond_medians.copy(), planned_entry, y_actual.copy(), trust_threshold, profit, played, t
+            cond_medians.copy(),
+            planned_entry,
+            y_actual.copy(),
+            trust_threshold,
+            profit,
+            played,
+            t,
         )
 
         if break_condition:
@@ -222,8 +228,8 @@ def two_sided_median_trading_strategy(
     # observe t=0..T-1 and adapt plan if a more profitable buy/sell points are detected
     for t in range(T):
         w, trust_threshold = get_weights_and_trust_threshold(
-                    y_actual.copy(), y_forecast.copy(), t, config
-                )
+            y_actual.copy(), y_forecast.copy(), t, config
+        )
 
         # build conditional medians for future times > t
         future_count = T - (t + 1)

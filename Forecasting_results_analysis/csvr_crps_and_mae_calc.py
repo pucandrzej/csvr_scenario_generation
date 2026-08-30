@@ -1,3 +1,6 @@
+"""Aggregating the forecasting simulation results
+to obtain the values of MAE and CRPS measures"""
+
 import argparse
 import os
 import pandas as pd
@@ -20,7 +23,10 @@ from config.paths import (
     RAW_MODEL_RESULTS_DIR,
     RAW_MAE_CRPS_RESULTS_DIR,
 )
-from config.forecasting_simulation_config import last_trade_time_in_path_delta, deliveries_no
+from config.forecasting_simulation_config import (
+    last_trade_time_in_path_delta,
+    deliveries_no,
+)
 
 probab_approaches = ["weather_scenarios", "hist_insample", "benchmark"]
 

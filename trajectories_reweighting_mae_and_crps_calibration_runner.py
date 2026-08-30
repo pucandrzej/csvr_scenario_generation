@@ -88,6 +88,7 @@ def result_path(filename, special_results_directory=None):
 
 def parameter_key(method, p, lambda_):
     """Create a stable, hashable key for resume checks."""
+
     def number(value):
         """Normalize CSV numbers and missing values for key comparison."""
         return None if pd.isna(value) else float(value)
@@ -106,8 +107,7 @@ def completed_parameters(path, model_setting, column_name):
         & (results["model"] == column_name)
     ]
     return {
-        parameter_key(row.weights, row.param2, row.param3)
-        for row in rows.itertuples()
+        parameter_key(row.weights, row.param2, row.param3) for row in rows.itertuples()
     }
 
 
@@ -153,9 +153,13 @@ def main():
     sys.stdout = sys.stderr = open(
         os.path.join(LOGS_DIR, "REWEIGHTING_MAE_CRPS_RUNNER.txt"), "w", buffering=1
     )
-    calibration_path = result_path(args.calibration_file, args.special_results_directory)
+    calibration_path = result_path(
+        args.calibration_file, args.special_results_directory
+    )
     validation_path = result_path(args.validation_file, args.special_results_directory)
-    validation_t0_path = result_path(args.validation_t0_file, args.special_results_directory)
+    validation_t0_path = result_path(
+        args.validation_t0_file, args.special_results_directory
+    )
     for path in [calibration_path, validation_path, validation_t0_path]:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if args.overwrite and os.path.exists(path):
@@ -195,7 +199,10 @@ def main():
     for model_setting, column_name in model_configs:
         selected = best_kernel_parameters(calibration, model_setting, column_name)
         selected.append(("mae_weights", ("mae", None, None)))
-        print(f"Validating {model_setting}: MAE-best, CRPS-best and MAE weights", flush=True)
+        print(
+            f"Validating {model_setting}: MAE-best, CRPS-best and MAE weights",
+            flush=True,
+        )
         results, per_t0 = evaluate_parameter_grid(
             model_setting,
             column_name,

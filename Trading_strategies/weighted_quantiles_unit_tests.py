@@ -10,53 +10,57 @@ from Trading_strategies.strategies_utils import (
 
 
 def test_weighted_median():
-    v = np.array([0., 10.])
+    v = np.array([0.0, 10.0])
 
-    assert weighted_median(v, np.array([.5, .5])) == pytest.approx(0.)       # exact
-    assert weighted_median(v, np.array([.25, .75])) == pytest.approx(10/3)  # interpolated
+    assert weighted_median(v, np.array([0.5, 0.5])) == pytest.approx(0.0)  # exact
+    assert weighted_median(v, np.array([0.25, 0.75])) == pytest.approx(
+        10 / 3
+    )  # interpolated
 
 
 def test_weighted_quantiles():
-    v, w = np.array([0., 10.]), np.array([.25, .75])
-    q = batch_weighted_quantiles(v, w, [.25, .50])
+    v, w = np.array([0.0, 10.0]), np.array([0.25, 0.75])
+    q = batch_weighted_quantiles(v, w, [0.25, 0.50])
 
-    assert q[0] == pytest.approx(0.)     # exact
-    assert q[1] == pytest.approx(10/3)  # interpolated
+    assert q[0] == pytest.approx(0.0)  # exact
+    assert q[1] == pytest.approx(10 / 3)  # interpolated
 
 
 def test_quantile_median_consistency():
-    v = np.array([8., 1., 5., 3.])
-    w = np.array([.1, .2, .3, .4])
+    v = np.array([8.0, 1.0, 5.0, 3.0])
+    w = np.array([0.1, 0.2, 0.3, 0.4])
 
-    assert batch_weighted_quantiles(v, w, [.5])[0] == pytest.approx(
+    assert batch_weighted_quantiles(v, w, [0.5])[0] == pytest.approx(
         weighted_median(v, w)
     )
 
 
-Y = np.array([
-    [1., 2., 4., 8.],
-    [2., 3., 6., 9.],
-])
+Y = np.array(
+    [
+        [1.0, 2.0, 4.0, 8.0],
+        [2.0, 3.0, 6.0, 9.0],
+    ]
+)
 
 
 def test_vanilla_band():
     cases = [
-        ("upper", .50, [2., 3.]),    # exact
-        ("upper", .60, [2.8, 4.2]),  # interpolated
-        ("lower", .50, [4., 6.]),    # exact
-        ("lower", .60, [3.2, 4.8]),  # interpolated
+        ("upper", 0.50, [2.0, 3.0]),  # exact
+        ("upper", 0.60, [2.8, 4.2]),  # interpolated
+        ("lower", 0.50, [4.0, 6.0]),  # exact
+        ("lower", 0.60, [3.2, 4.8]),  # interpolated
     ]
     for kind, scp, expected in cases:
         assert vanilla_band(Y, scp, kind) == pytest.approx(expected)
 
 
 def test_weighted_band():
-    w = np.array([.1, .2, .3, .4])
+    w = np.array([0.1, 0.2, 0.3, 0.4])
     cases = [
-        ("upper", .30, [2., 3.]),    # exact
-        ("upper", .40, [8/3, 4]),   # interpolated
-        ("lower", .70, [4, 6]),    # exact
-        ("lower", .80, [3, 4.5]),  # interpolated
+        ("upper", 0.30, [2.0, 3.0]),  # exact
+        ("upper", 0.40, [8 / 3, 4]),  # interpolated
+        ("lower", 0.70, [4, 6]),  # exact
+        ("lower", 0.80, [3, 4.5]),  # interpolated
     ]
     for kind, scp, expected in cases:
         assert weighted_band(Y, w, scp, kind) == pytest.approx(expected)
@@ -66,7 +70,7 @@ def test_uniform_weight_band_consistency():
     w = np.ones(Y.shape[1]) / Y.shape[1]
 
     for kind in ["upper", "lower"]:
-        for scp in [.25, .50, .75, 1.]:
+        for scp in [0.25, 0.50, 0.75, 1.0]:
             print(Y, w, scp, kind)
             print(weighted_band(Y, w, scp, kind))
             print(vanilla_band(Y, scp, kind))

@@ -82,7 +82,9 @@ def validation_figure(results, title="Validation metrics by t0"):
     }
 
     for index, ((model_setting, model), model_results) in enumerate(groups):
-        label = _model_label(model_setting, model) if model_setting is not None else None
+        label = (
+            _model_label(model_setting, model) if model_setting is not None else None
+        )
         color = colors[index % len(colors)]
         raw = model_results.sort_values("t0").drop_duplicates("t0")
 
@@ -117,11 +119,7 @@ def validation_figure(results, title="Validation metrics by t0"):
                         x=selected["t0"],
                         y=selected[f"{metric}_weighted"],
                         mode="lines+markers",
-                        name=(
-                            f"{label} - {method}"
-                            if label
-                            else method
-                        ),
+                        name=(f"{label} - {method}" if label else method),
                         line={"color": color, "dash": styles[selected_by]},
                         legendgroup=legendgroup,
                         showlegend=row == 1,
@@ -173,9 +171,7 @@ def paper_validation_figure(results):
         raw = model_results.sort_values("t0").drop_duplicates("t0")
         mae_weights = model_results[model_results["selected_by"] == "mae_weights"]
 
-        for axis, metric, selected_by in zip(
-            axes, ("mae", "crps"), ("mae", "crps")
-        ):
+        for axis, metric, selected_by in zip(axes, ("mae", "crps"), ("mae", "crps")):
             kernel = model_results[model_results["selected_by"] == selected_by]
             for data, column, style in (
                 (raw, f"{metric}_raw", "raw"),
