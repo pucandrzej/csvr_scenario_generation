@@ -199,7 +199,7 @@ cython_debug/
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #   and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+.vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -233,6 +233,16 @@ FORECASTING_SIMULATION_RESULTS
 BENCHMARK_FORECASTING_SIMULATION_RESULTS
 LOGS
 MAE_CRPS_RESULTS
+DM_MAE_CRPS_RESULTS
 # ignore pickles of trading strategies - these are used mostly for development purposes
 TRADING_STRATEGIES_RESULTS/CALIBRATION_PICKLES
 TIMING_RESULTS
+
+# local audit and diagnostic artifacts
+launch.json
+my_todo_notes.txt
+Trading_strategies/strategies_utils/test.ipynb
+TEST_DIR/
+PAPER_FIGURES/DM_*.png
+PAPER_FIGURES/dynamic_reweighting_forecast_diagnostics_test_*.html
+PAPER_FIGURES/validation_dynamic_reweighting_by_t0_*.html
