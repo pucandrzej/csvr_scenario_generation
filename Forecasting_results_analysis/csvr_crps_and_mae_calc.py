@@ -120,7 +120,9 @@ def get_pinball_from_csvr(inp):
 
     taus = np.linspace(0.01, 0.99, 99)
 
-    quantiles = np.nanquantile(all_scenarios, taus, axis=1)
+    quantiles = np.nanquantile(
+        all_scenarios, taus, axis=1
+    )  # we need to use nan-robust quantile here as we use nan padding
     errors = actuals[None, :, :] - quantiles
     tau_grid = taus[:, None, None]
     losses = np.where(errors >= 0, tau_grid * errors, (1 - tau_grid) * -errors)
@@ -129,7 +131,9 @@ def get_pinball_from_csvr(inp):
     path_idxs = np.repeat(full_path, len(taus))
     used_taus = np.tile(taus, len(full_path))
     pinball = losses.mean(axis=1).T.ravel()
-    mae = np.abs(np.nanmedian(all_scenarios, axis=1) - actuals).mean(axis=0)
+    mae = np.abs(np.nanmedian(all_scenarios, axis=1) - actuals).mean(
+        axis=0
+    )  # we need to use nan-robust median here as we use nan padding
 
     qra_pinball_score_df = pd.DataFrame()
     qra_pinball_score_df["path_idx"] = path_idxs

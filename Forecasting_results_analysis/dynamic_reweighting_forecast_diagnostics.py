@@ -74,7 +74,7 @@ def _delivery_tasks(
     tasks = []
     for directory in directories:
         if (
-            delivery_index is not None
+            delivery_index is not None  # filter for focused checks
             and int(directory.split("_")[3]) != delivery_index
         ):
             continue
@@ -127,8 +127,8 @@ def _weighted_quantiles(sorted_values, sort_indices, weights):
     """Quantiles for several horizons using their previously sorted scenarios."""
     rows = []
     for values, indices in zip(sorted_values, sort_indices):
-        cumulative = np.cumsum(weights[indices])
-        right = np.minimum(
+        cumulative = np.cumsum(weights[indices])  # cumulative weights of sorted scenarios
+        right = np.minimum(  # find the right boundary of (less than)
             np.searchsorted(cumulative, ALL_QUANTILES),
             len(values) - 1,
         )
@@ -149,11 +149,11 @@ def _weighted_quantiles(sorted_values, sort_indices, weights):
 
 def _parameter_weights(actual, forecasts, t0, parameters):
     """Compute all weight vectors while sharing work between equal lambdas."""
-    actual = actual[: t0 + 1]
-    forecasts = forecasts[: t0 + 1]
+    actual = actual[: t0 + 1]# get the actuals until t0
+    forecasts = forecasts[: t0 + 1] # get the forecasts until t0
     differences = forecasts - actual[:, None]
-    width = max(np.mean(np.abs(np.median(forecasts, axis=1) - actual)), 0.01)
-    kernel_errors = {}
+    width = max(np.mean(np.abs(np.median(forecasts, axis=1) - actual)), 0.01) # MAE kernel width
+    kernel_errors = {} # kernel error per lambda used to calculate them; we cache the results for lambda for optimization
     result = []
 
     for method, p, lambda_ in parameters:
@@ -161,11 +161,11 @@ def _parameter_weights(actual, forecasts, t0, parameters):
             safe_differences = np.where(differences == 0, 1e-6, differences)
             unscaled = 1 / np.mean(np.abs(safe_differences), axis=0)
         elif method == "kernel":
-            if lambda_ not in kernel_errors:
+            if lambda_ not in kernel_errors: # define exponentially-decaying errors for kernel
                 ages = t0 - np.arange(t0 + 1)
                 time_weights = np.exp(-lambda_ * ages)
                 time_weights /= time_weights.sum()
-                kernel_errors[lambda_] = time_weights @ (differences**2)
+                kernel_errors[lambda_] = time_weights @ (differences**2)  # the sum of errors used in kernel
             unscaled = np.exp(-width * kernel_errors[lambda_] ** (p / 2))
         else:
             raise ValueError(f"Unknown weighting method: {method}")
@@ -182,32 +182,39 @@ def _parameter_weights(actual, forecasts, t0, parameters):
 def _evaluate_delivery(task):
     """Evaluate every parameter setting for all daily files of one delivery."""
     results_dir, directory, files, column_name, parameters = task
-    raw_sums = np.zeros((2, 30))
-    weighted_sums = np.zeros((len(parameters), 2, 30))
-    evaluated_cases = []
+    raw_sums = np.zeros((2, 30))  # array to store raw (unweighted) MAE and CRPS results
+    weighted_sums = np.zeros(
+        (len(parameters), 2, 30)
+    )  # array to store weighted MAE and CRPS results
+    evaluated_cases = []  # records which delivery-day trajectory files were evaluated
 
-    for filename in files:
-        actual, forecasts = _read_forecast(
+    for filename in files:  # all calibration/validation results
+        actual, forecasts = _read_forecast(  # read results in numpy
             os.path.join(results_dir, directory, filename),
             column_name,
         )
         if actual.shape[0] != 31 or forecasts.shape[0] != 31:
             raise ValueError(f"Expected 31 trajectory rows in {directory}/{filename}")
 
-        order = np.argsort(forecasts, axis=1)
-        sorted_forecasts = np.take_along_axis(forecasts, order, axis=1)
-        raw_medians = np.nanmedian(forecasts, axis=1)
-        raw_quantiles = np.nanquantile(forecasts, TAUS, axis=1).T
+        order = np.argsort(forecasts, axis=1)  # order of forecasts at each step
+        sorted_forecasts = np.take_along_axis(
+            forecasts, order, axis=1
+        )  # we use argsort + take_along_axis as we need order either way - it just sorts here
+        raw_medians = np.median(forecasts, axis=1)
+        raw_quantiles = np.quantile(forecasts, TAUS, axis=1).T
 
         for t0 in range(30):
             future_actual = actual[t0 + 1 :]
-            raw_sums[0, t0] += np.abs(future_actual - raw_medians[t0 + 1 :]).sum()
-            raw_sums[1, t0] += _pinball_sum(
+            raw_sums[0, t0] += np.abs(
+                future_actual - raw_medians[t0 + 1 :]
+            ).sum()  # get the unweighted MAE
+            raw_sums[1, t0] += _pinball_sum(  # get the unweighted CRPS
                 future_actual,
                 raw_quantiles[t0 + 1 :],
             )
-
-            weights = _parameter_weights(actual, forecasts, t0, parameters)
+            weights = _parameter_weights(
+                actual, forecasts, t0, parameters
+            )  # get all of the weights for parameters at once for optimal processing
             for index, parameter_weights in enumerate(weights):
                 quantiles = _weighted_quantiles(
                     sorted_forecasts[t0 + 1 :],
@@ -256,6 +263,7 @@ def evaluate_parameter_grid(
     )
     _validate_tasks(tasks, run_type, delivery_index, daily_file)
 
+    # run the weighting over the whole grid of parameters and all results files
     if processes == 1:
         results = map(_evaluate_delivery, tasks)
         results = list(tqdm(results, total=len(tasks), desc="Deliveries"))
@@ -269,10 +277,11 @@ def evaluate_parameter_grid(
                 )
             )
 
+    # prepare the results
     raw_sums = sum(result[0] for result in results)
     weighted_sums = sum(result[1] for result in results)
     cases = [case for result in results for case in result[2]]
-    counts = len(cases) * (30 - np.arange(30))
+    counts = len(cases) * (30 - np.arange(30)) # different counts for different t0
     raw_mae = raw_sums[0] / counts
     raw_crps = raw_sums[1] / (counts * len(TAUS))
 

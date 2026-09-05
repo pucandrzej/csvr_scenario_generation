@@ -152,8 +152,8 @@ def _daily_losses(path, column):
     ):
         raise ValueError(f"Unexpected trajectory shape in {path}")
 
-    median = np.nanmedian(forecasts, axis=1)
-    quantiles = np.nanquantile(forecasts, TAUS, axis=1)
+    median = np.median(forecasts, axis=1)
+    quantiles = np.quantile(forecasts, TAUS, axis=1)
     error = actual[None, :] - quantiles
     pinball = np.where(
         error >= 0,

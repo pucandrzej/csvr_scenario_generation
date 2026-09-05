@@ -1,4 +1,7 @@
-"""Calibrate kernel weights on calibration CSVs, then validate both optima."""
+"""Calibrate kernel weights on calibration CSVs, then validate both optima.
+Script was added as an extension to forecasting and trading strategies results
+to show the impact of trajectories scenarios weighting in terms of MAE and CRPS.
+"""
 
 import argparse
 import itertools
@@ -86,14 +89,14 @@ def result_path(filename, special_results_directory=None):
     return os.path.join(directory, filename)
 
 
+def _number(value):
+    """Normalize CSV numbers and missing values for key comparison."""
+    return None if pd.isna(value) else float(value)
+
+
 def parameter_key(method, p, lambda_):
     """Create a stable, hashable key for resume checks."""
-
-    def number(value):
-        """Normalize CSV numbers and missing values for key comparison."""
-        return None if pd.isna(value) else float(value)
-
-    return method, number(p), number(lambda_)
+    return method, _number(p), _number(lambda_)
 
 
 def completed_parameters(path, model_setting, column_name):
@@ -172,8 +175,10 @@ def main():
     ]
 
     for model_setting, column_name in model_configs:
-        completed = completed_parameters(calibration_path, model_setting, column_name)
-        pending = [
+        completed = completed_parameters(
+            calibration_path, model_setting, column_name
+        )  # check which calibration configurations were already finished
+        pending = [  # what configurations are yet to be tested in calibration
             parameter
             for parameter in parameters
             if parameter_key(*parameter) not in completed
@@ -183,7 +188,7 @@ def main():
             continue
 
         print(f"Calibrating {model_setting}: {len(pending)} settings", flush=True)
-        results = evaluate_parameter_grid(
+        results = evaluate_parameter_grid(  # run the calibration in parallel
             model_setting,
             column_name,
             pending,
@@ -191,9 +196,11 @@ def main():
             processes=args.processes,
             special_results_directory=args.special_results_directory,
         )
-        append_results(results, calibration_path)
+        append_results(
+            results, calibration_path
+        )  # append the results to the calibration results file - allows for restarts!
 
-    calibration = pd.read_csv(calibration_path)
+    calibration = pd.read_csv(calibration_path)  # read the complete calibration
     validation_results = []
     validation_t0_results = []
     for model_setting, column_name in model_configs:
