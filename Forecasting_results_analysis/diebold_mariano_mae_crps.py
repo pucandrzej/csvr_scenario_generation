@@ -187,15 +187,15 @@ def _config_losses(config, pool, recompute=False, directories=None):
     """Load or calculate day-by-delivery loss matrices for one configuration."""
     directories = directories or _resolve_directories()
     directories.loss_cache.mkdir(parents=True, exist_ok=True)
-    cache = directories.loss_cache / f"{config.key}.npz"
+    cache = directories.loss_cache / f"{config.key}.npz"  # path to the cached losses from DM
     if cache.exists() and not recompute:
         with np.load(cache) as data:
             mae, crps, hashes = data["mae"], data["crps"], data["actual_hashes"]
-        if mae.shape != (N_DAYS, N_DELIVERIES) or crps.shape != mae.shape:
+        if mae.shape != (N_DAYS, N_DELIVERIES) or crps.shape != mae.shape: # check for data compatibility
             raise ValueError(f"Invalid cache shape in {cache}; rerun with --recompute")
         return mae, crps, hashes
 
-    worker = partial(_delivery_losses, config=config, directories=directories)
+    worker = partial(_delivery_losses, config=config, directories=directories) # we create a function to run in parallel using partial
     rows = list(
         tqdm(
             pool.imap(worker, range(N_DELIVERIES)),
@@ -265,7 +265,7 @@ def main():
     if len(configs) != 27:
         raise RuntimeError(f"Expected 27 configurations, found {len(configs)}")
 
-    mae_losses, crps_losses = [], []
+    mae_losses, crps_losses = [], []  # lists for losses from every model
     reference_hashes = None
     with Pool(args.processes) as pool:
         for config in configs:

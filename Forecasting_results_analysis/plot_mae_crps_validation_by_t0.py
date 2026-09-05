@@ -54,6 +54,17 @@ def _ordered_model_groups(results):
 
 
 def validation_figure(results, title="Validation metrics by t0"):
+    """Create an interactive validation figure for manual inspection.
+
+    Args:
+        results (pandas.DataFrame): Validation metrics by model, weighting method,
+            and forecast-update time.
+        title (str, optional): Figure title. Defaults to
+            "Validation metrics by t0".
+
+    Returns:
+        plotly.graph_objects.Figure: Interactive MAE and CRPS subplots.
+    """
     figure = make_subplots(
         rows=2,
         cols=1,
@@ -88,8 +99,8 @@ def validation_figure(results, title="Validation metrics by t0"):
         color = colors[index % len(colors)]
         raw = model_results.sort_values("t0").drop_duplicates("t0")
 
-        for row, metric in ((1, "mae"), (2, "crps")):
-            legendgroup = f"{model_setting}_{model}_raw"
+        for row, metric in ((1, "mae"), (2, "crps")): # plot MAE trajectory on top and CRPS on the bottom plot
+            legendgroup = f"{model_setting}_{model}_raw" # raw first - one curve
             figure.add_trace(
                 go.Scatter(
                     x=raw["t0"],
@@ -140,7 +151,15 @@ def validation_figure(results, title="Validation metrics by t0"):
 
 
 def paper_validation_figure(results):
-    """Return a compact paper figure with metric-specific kernel curves."""
+    """Create a compact publication-ready validation figure.
+
+    Args:
+        results (pandas.DataFrame): Validation metrics by model, weighting method,
+            and forecast-update time.
+
+    Returns:
+        matplotlib.figure.Figure: MAE and CRPS subplots with shared legends.
+    """
     fig, axes = plt.subplots(
         2, 1, figsize=(Paper_width, 0.70 * Paper_width), sharex=True
     )
