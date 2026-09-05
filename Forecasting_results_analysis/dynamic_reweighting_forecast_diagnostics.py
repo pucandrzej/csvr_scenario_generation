@@ -166,7 +166,8 @@ def _parameter_weights(actual, forecasts, t0, parameters):
                 time_weights = np.exp(-lambda_ * ages)
                 time_weights /= time_weights.sum()
                 kernel_errors[lambda_] = time_weights @ (differences**2)  # the sum of errors used in kernel
-            unscaled = np.exp(-width * kernel_errors[lambda_] ** (p / 2))
+            log_weights = -width * kernel_errors[lambda_] ** (p / 2)
+            unscaled = np.exp(log_weights - log_weights.max()) # for numerical stability in high distance cases; subtracting max does not impact the final weight in non-edge cases
         else:
             raise ValueError(f"Unknown weighting method: {method}")
 

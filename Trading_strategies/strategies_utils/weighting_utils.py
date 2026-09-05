@@ -38,9 +38,8 @@ def compute_weights(
     if weights_method == "kernel":
         # we are calculating the kernel on TIME DIMENSION vectors: so each observation from trajectory is a vector element, we apply decay weight and sum over it
         err = np.sum(w_time[:, None] * (np.abs(diffs)) ** 2, axis=0)
-        raw = np.exp(
-            -kernel_width * (err ** (p / 2))
-        )  # for p = 2 it is gaussian kernel
+        log_weights = -kernel_width * (err ** (p / 2))  # for p = 2 it is gaussian kernel
+        raw = np.exp(log_weights - log_weights.max())
 
         # scale the weights so that they sum to 1
         s = np.sum(raw)
