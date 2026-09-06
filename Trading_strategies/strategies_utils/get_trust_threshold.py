@@ -14,7 +14,9 @@ def get_trust_threshold(residuals, trust_threshold_method):
         iqr = np.mean(np.abs(residuals))
         ipr = np.mean(np.abs(residuals))
 
-    if trust_threshold_method == "3sigma":
+    if len(residuals) == 1:
+        trust_threshold = raw_median_mae
+    elif trust_threshold_method == "3sigma":
         trust_threshold = 3 * sigma
     elif trust_threshold_method == "iqr":
         trust_threshold = iqr

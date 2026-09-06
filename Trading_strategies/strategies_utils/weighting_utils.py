@@ -75,24 +75,9 @@ def weighted_median(values, weights):
     Returns
     -------
     float
-        Weighted median (linear interpolation if needed).
+        Median using weighted Hazen interpolation.
     """
-    i = np.argsort(values)
-    v, w = values[i], weights[i]
-    c = np.cumsum(w)
-    p = 0.5
-    idx = min([np.searchsorted(c, p), len(c) - 1])
-
-    if c[idx] == p or idx == 0:
-        return v[idx]
-    else:
-        c1, c2 = c[idx - 1], c[idx]
-        v1, v2 = v[idx - 1], v[idx]
-        denominator = c2 - c1
-        nominator_1 = v1 * (c2 - p)
-        nominator_2 = v2 * (p - c1)
-        interpolated_value = (nominator_1 + nominator_2) / denominator
-        return interpolated_value
+    return batch_weighted_quantiles(values, weights, [0.5])[0]
 
 
 def _calc_band(M, Y, idx, band_type):
@@ -183,6 +168,10 @@ def weighted_band(Y, weights, scp, band_type):
     ndarray
         Weighted prediction band.
     """
+    keep = weights > 0
+    Y = Y[:, keep]
+    weights = weights[keep]
+
     if band_type == "upper":
         M = np.max(Y, axis=0)
     elif band_type == "lower":
@@ -268,31 +257,29 @@ def _calc_weighted_band(Y, idx, band_type):
     return B
 
 
-def batch_weighted_quantiles(values, weights, qs):
-    """Vectorized weighted quantiles — one sort, many q's.
-    Matches weighted_median's interpolation convention exactly.
-    Assumes weights already sum to 1 (enforced by _check_weights
-    at the call site); does not renormalize.
+def batch_weighted_quantiles(values, weights, qs, *, presorted=False):
+    """Weighted Hazen quantiles; zero weights ignored, endpoints clipped.
+
+    Expects finite 1-D values and quantile levels in [0, 1]. Weights need
+    not sum to one. Set presorted=True when values are already sorted.
+    Equal weights use the same interpolation formula as unequal weights.
     """
-    values = np.asarray(values)
-    weights = np.asarray(weights)
-    qs = np.asarray(qs)
+    v = np.asarray(values, dtype=float)
+    w = np.asarray(weights, dtype=float)
+    q = np.atleast_1d(np.asarray(qs, dtype=float))
 
-    i = np.argsort(values)
-    v, w = values[i], weights[i]
-    c = np.cumsum(w)
+    if np.any(w < 0) or not np.all(np.isfinite(w)):
+        raise ValueError("Weights must be finite and nonnegative")
 
-    idx = np.searchsorted(c, qs)
-    idx = np.minimum(idx, len(c) - 1)
-    at_boundary = (c[idx] == qs) | (idx == 0)
+    if not presorted:
+        order = np.argsort(v)
+        v, w = v[order], w[order]
 
-    result = np.empty(len(qs), dtype=float)
-    result[at_boundary] = v[idx[at_boundary]]
+    keep = w > 0
+    v, w = v[keep], w[keep]
+    if w.size == 0:
+        raise ValueError("At least one positive weight is required")
 
-    interp = ~at_boundary
-    idx_i = idx[interp]
-    q_i = qs[interp]
-    c1, c2 = c[idx_i - 1], c[idx_i]
-    v1, v2 = v[idx_i - 1], v[idx_i]
-    result[interp] = (v1 * (c2 - q_i) + v2 * (q_i - c1)) / (c2 - c1)
-    return result
+    cumulative = np.cumsum(w)
+    positions = (cumulative - 0.5 * w) / cumulative[-1]
+    return np.interp(q, positions, v)

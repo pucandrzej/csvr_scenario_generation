@@ -263,7 +263,9 @@ def two_sided_median_trading_strategy(
         )
 
         # prepare the planned profit: in case the planned entry is at t we already know the price
-        if planned_entry > t:
+        if planned_entry == planned_exit:
+            planned_entry_profit = 0.0
+        elif planned_entry > t:
             planned_entry_profit = (
                 cond_medians[planned_exit - t - 1] - cond_medians[planned_entry - t - 1]
             )

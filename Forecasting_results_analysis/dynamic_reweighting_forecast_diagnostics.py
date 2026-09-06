@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from Trading_strategies.strategies_utils.weighting_utils import (
+    batch_weighted_quantiles,
+)
 from config.forecasting_simulation_config import deliveries_no
 from config.paths import (
     BENCHMARK_RESULTS_DIR,
@@ -125,26 +128,12 @@ def _pinball_sum(actual, quantiles):
 
 def _weighted_quantiles(sorted_values, sort_indices, weights):
     """Quantiles for several horizons using their previously sorted scenarios."""
-    rows = []
-    for values, indices in zip(sorted_values, sort_indices):
-        cumulative = np.cumsum(weights[indices])  # cumulative weights of sorted scenarios
-        right = np.minimum(  # find the right boundary of (less than)
-            np.searchsorted(cumulative, ALL_QUANTILES),
-            len(values) - 1,
+    return np.vstack([
+        batch_weighted_quantiles(
+            values, weights[indices], ALL_QUANTILES, presorted=True
         )
-        boundary = (cumulative[right] == ALL_QUANTILES) | (right == 0)
-        left = np.maximum(right - 1, 0)
-
-        quantiles = values[right].copy()
-        interpolate = ~boundary
-        quantiles[interpolate] = (
-            values[left[interpolate]]
-            * (cumulative[right[interpolate]] - ALL_QUANTILES[interpolate])
-            + values[right[interpolate]]
-            * (ALL_QUANTILES[interpolate] - cumulative[left[interpolate]])
-        ) / (cumulative[right[interpolate]] - cumulative[left[interpolate]])
-        rows.append(quantiles)
-    return np.vstack(rows)
+        for values, indices in zip(sorted_values, sort_indices)
+    ])
 
 
 def _parameter_weights(actual, forecasts, t0, parameters):
@@ -202,7 +191,7 @@ def _evaluate_delivery(task):
             forecasts, order, axis=1
         )  # we use argsort + take_along_axis as we need order either way - it just sorts here
         raw_medians = np.median(forecasts, axis=1)
-        raw_quantiles = np.quantile(forecasts, TAUS, axis=1).T
+        raw_quantiles = np.quantile(forecasts, TAUS, axis=1, method="hazen").T
 
         for t0 in range(30):
             future_actual = actual[t0 + 1 :]

@@ -242,8 +242,8 @@ def speculative_strategy_correction(
         planned_exit = desired_exit
         planned_direction = desired_direction
 
-    # entry logic: if not in position and planned entry is now or in past -> enter
-    if (not in_position) and (planned_entry == t):
+    # Enter at the planned time only when the exit is later.
+    if (not in_position) and (planned_entry == t) and (planned_entry < planned_exit):
         entry_price = y_actual[t]
         exit_index = planned_exit
         in_position = True

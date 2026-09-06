@@ -270,7 +270,9 @@ def two_sided_bands_strategy(y_actual, y_forecast, config: TwoSidedBandsConfig):
             )
         )
 
-        if planned_entry > t:
+        if planned_entry == planned_exit:
+            planned_entry_profit = 0.0
+        elif planned_entry > t:
             if (
                 planned_direction == -1
             ):  # if we short we go from entry on max band to exit on min band

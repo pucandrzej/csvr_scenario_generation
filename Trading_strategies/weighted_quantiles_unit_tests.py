@@ -12,18 +12,16 @@ from Trading_strategies.strategies_utils import (
 def test_weighted_median():
     v = np.array([0.0, 10.0])
 
-    assert weighted_median(v, np.array([0.5, 0.5])) == pytest.approx(0.0)  # exact
-    assert weighted_median(v, np.array([0.25, 0.75])) == pytest.approx(
-        10 / 3
-    )  # interpolated
+    assert weighted_median(v, np.array([0.5, 0.5])) == pytest.approx(np.median(v))
+    assert weighted_median(v, np.array([0.25, 0.75])) == pytest.approx(7.5)
+    assert weighted_median(v, np.array([0.0, 1.0])) == 10.0
 
 
 def test_weighted_quantiles():
     v, w = np.array([0.0, 10.0]), np.array([0.25, 0.75])
-    q = batch_weighted_quantiles(v, w, [0.25, 0.50])
+    q = batch_weighted_quantiles(v, w, [0.0, 0.25, 0.50, 1.0])
 
-    assert q[0] == pytest.approx(0.0)  # exact
-    assert q[1] == pytest.approx(10 / 3)  # interpolated
+    assert q == pytest.approx([0.0, 2.5, 7.5, 10.0])
 
 
 def test_quantile_median_consistency():
@@ -66,6 +64,15 @@ def test_weighted_band():
         assert weighted_band(Y, w, scp, kind) == pytest.approx(expected)
 
 
+def test_weighted_band_zero_weights():
+    for kind, sign in [("upper", 1), ("lower", -1)]:
+        paths = sign * np.array([[9.0, 0.0], [0.0, 10.0]])
+        for scp in [0.05, 0.50, 0.95, 1.0]:
+            assert weighted_band(paths, np.array([0.0, 1.0]), scp, kind) == pytest.approx(
+                paths[:, 1]
+            )
+
+
 def test_uniform_weight_band_consistency():
     w = np.ones(Y.shape[1]) / Y.shape[1]
 
@@ -86,6 +93,7 @@ if __name__ == "__main__":
         test_quantile_median_consistency,
         test_vanilla_band,
         test_weighted_band,
+        test_weighted_band_zero_weights,
         test_uniform_weight_band_consistency,
     ]
 
