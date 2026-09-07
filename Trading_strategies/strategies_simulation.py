@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from config.trading_strategies_calibration_config import (
     bands_grid_config,
     median_grid_config,
+    trading_calibration_grid,
 )
 from config.paths import (
     CALIBRATION_PICKLES_DIR,
@@ -400,6 +401,8 @@ if __name__ == "__main__":
 
     if args.calibration_pickle_name is None:
         for model, column_name in zip(models, columns_names):
+            if args.run_type == "calibration":
+                grid = trading_calibration_grid(args.model, model, column_name)
             print(
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Processing {model}, {column_name}",
                 flush=True,

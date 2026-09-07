@@ -8,10 +8,45 @@ bands_grid_config = {
         "3sigma",
         "5_95_IPR",  # IPR: InterPercentile Range
         "iqr",
+        "mae",
     ],
     "parameter_method_1": ["kernel"],
     "parameter_method_2": ["mae"],
 }
+
+# Frozen (p, lambda) pairs from reweighting calibration, matching
+# PAPER_TABLES/reweighting_best_parameters.csv on 2026-09-07.
+# Trading calibration never selects these parameters from result files at runtime.
+reweighting_best_params = {
+    ("_____None____", "benchmark_prediction"): {
+        "mae": (0.5, 1.5), "crps": (0.5, 0.9),
+    },
+    ("_hist_insample_None_False_None", "MULTI_prediction"): {
+        "mae": (0.5, 2.0), "crps": (0.5, 1.5),
+    },
+    ("_weather_scenarios_None_False_None", "MULTI_prediction"): {
+        "mae": (2.5, 3.0), "crps": (1.0, 2.0),
+    },
+    ("_hist_insample_None_True_dual_coeff", "MULTI_prediction"): {
+        "mae": (0.5, 1.25), "crps": (0.25, 2.0),
+    },
+    ("_weather_scenarios_None_True_dual_coeff", "MULTI_prediction"): {
+        "mae": (2.75, 3.0), "crps": (1.0, 1.5),
+    },
+}
+
+
+def trading_calibration_grid(strategy, model_setting, model):
+    """Use frozen model-specific weights and calibrate thresholds/SCP only."""
+    config = {"median": median_grid_config, "bands": bands_grid_config}[strategy]
+    metric = "mae" if strategy == "median" else "crps"
+    p, lambda_ = reweighting_best_params[(model_setting, model)][metric]
+    return [
+        (scp, power, decay, threshold, method)
+        for method, power, decay in [("kernel", p, lambda_), ("mae", np.nan, np.nan)]
+        for scp in config["scp"]
+        for threshold in config["trust_threshold_method"]
+    ]
 
 median_grid_config = {
     "scp": [np.nan],
