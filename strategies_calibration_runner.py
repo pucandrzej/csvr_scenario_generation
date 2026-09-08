@@ -19,6 +19,11 @@ parser.add_argument(
 )
 parser.add_argument("--special_results_directory")
 parser.add_argument("--model", choices=["median", "bands"])
+parser.add_argument(
+    "--use_reweighting_best_params",
+    action="store_true",
+    help="Use frozen model-specific MAE/CRPS-optimal p and lambda instead of the calibration grids.",
+)
 args = parser.parse_args()
 
 sys.stderr = open(
@@ -49,6 +54,7 @@ for model in [args.model] if args.model else ["median", "bands"]:
                 + ["--model", model]
                 + ["--processes", args.processes]
                 + ["--band_type", band_type]
+                + ["--use_reweighting_best_params"] * args.use_reweighting_best_params
                 + (
                     ["--special_results_directory", args.special_results_directory]
                     if args.special_results_directory

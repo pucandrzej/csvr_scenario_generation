@@ -192,6 +192,11 @@ parser.add_argument(
 )
 parser.add_argument("--processes", default=1, help="No of processes")
 parser.add_argument("--special_results_directory")
+parser.add_argument(
+    "--use_reweighting_best_params",
+    action="store_true",
+    help="Use frozen model-specific MAE/CRPS-optimal p and lambda instead of the calibration grids.",
+)
 args = parser.parse_args()
 
 if args.special_results_directory:
@@ -401,7 +406,7 @@ if __name__ == "__main__":
 
     if args.calibration_pickle_name is None:
         for model, column_name in zip(models, columns_names):
-            if args.run_type == "calibration":
+            if args.run_type == "calibration" and args.use_reweighting_best_params:
                 grid = trading_calibration_grid(args.model, model, column_name)
             print(
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Processing {model}, {column_name}",
