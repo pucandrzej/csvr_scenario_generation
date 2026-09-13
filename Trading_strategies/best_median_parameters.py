@@ -1,9 +1,14 @@
 """Print median-strategy optima and the implied bands calibration grid."""
 
+import argparse
 from pathlib import Path
 
 import pandas as pd
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="Sortino_ratio")
+args = parser.parse_args()
 
 directory = (
     Path(__file__).resolve().parents[1]
@@ -16,7 +21,7 @@ for path in sorted(
 ):
     data = pd.read_csv(path).query("weights in ['kernel', 'mae']")
     rows = data.loc[
-        data.groupby(["model_setting", "model", "weights"])["Sortino_ratio"].idxmax()
+        data.groupby(["model_setting", "model", "weights"])[args.metric].idxmax()
     ]
     best.append(rows.assign(one_sided="_True_" in path.name))
 
@@ -31,7 +36,7 @@ print(
             "param2",
             "param3",
             "threshold",
-            "Sortino_ratio",
+            args.metric,
         ]
     ].to_string(index=False)
 )

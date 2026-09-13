@@ -21,6 +21,7 @@ parser.add_argument(
     help="No of parallel processes in underlying simulation.",
 )
 parser.add_argument("--special_results_directory")
+parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="Sortino_ratio")
 args = parser.parse_args()
 
 calibration_results_dir = CALIBRATION_STRATEGIES_MEASURES_DIR
@@ -82,7 +83,7 @@ for file in os.listdir(calibration_results_dir):
             weighting_type_df["threshold"] = "mae"
             weighting_type_df["weights"] = "mae"
 
-        idx = weighting_type_df.groupby("model_setting")["Sortino_ratio"].idxmax()
+        idx = weighting_type_df.groupby("model_setting")[args.metric].idxmax()
         best_rows = weighting_type_df.loc[idx]
 
         flags = parse_file_flags(file)
