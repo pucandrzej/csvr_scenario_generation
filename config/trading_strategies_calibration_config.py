@@ -68,6 +68,10 @@ median_grid_config = {
         3.5,
         3.75,
         4,
+        4.25,
+        4.5,
+        4.75,
+        5
     ],
     "lambda_list": [
         0,
