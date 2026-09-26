@@ -15,6 +15,7 @@ from config.paths import GENERAL_STRATEGY_RESULTS, PAPER_FIGURES_DIR
 
 plt.style.use("paper_style.mplstyle")
 Paper_width = 6.30045
+T0_TICKS = [1, 5, 10, 15, 20, 25, 30]
 PLOT_MODEL_LABELS = {
     "_____None____": "naïve",
     "_hist_insample_None_True_dual_coeff": "historical, SVS",
@@ -103,7 +104,7 @@ def validation_figure(results, title="Validation metrics by t0"):
             legendgroup = f"{model_setting}_{model}_raw" # raw first - one curve
             figure.add_trace(
                 go.Scatter(
-                    x=raw["t0"],
+                    x=raw["t0"] + 1,
                     y=raw[f"{metric}_raw"],
                     mode="lines+markers",
                     name=f"{label} - raw" if label else "Raw ensemble",
@@ -127,7 +128,7 @@ def validation_figure(results, title="Validation metrics by t0"):
                 legendgroup = f"{model_setting}_{model}_{selected_by}"
                 figure.add_trace(
                     go.Scatter(
-                        x=selected["t0"],
+                        x=selected["t0"] + 1,
                         y=selected[f"{metric}_weighted"],
                         mode="lines+markers",
                         name=(f"{label} - {method}" if label else method),
@@ -146,7 +147,7 @@ def validation_figure(results, title="Validation metrics by t0"):
     )
     figure.update_yaxes(title_text="MAE [EUR/MWh]", row=1, col=1)
     figure.update_yaxes(title_text="CRPS [EUR/MWh]", row=2, col=1)
-    figure.update_xaxes(title_text="t0", row=2, col=1)
+    figure.update_xaxes(title_text="t0", tickvals=T0_TICKS, row=2, col=1)
     return figure
 
 
@@ -198,7 +199,7 @@ def paper_validation_figure(results):
                 (kernel, f"{metric}_weighted", "kernel"),
             ):
                 axis.plot(
-                    data["t0"],
+                    data["t0"] + 1,
                     data[column],
                     color=color,
                     linestyle=line_styles[style],
@@ -207,7 +208,8 @@ def paper_validation_figure(results):
 
     axes[0].set_ylabel("MAE [EUR/MWh]")
     axes[1].set_ylabel("CRPS [EUR/MWh]")
-    axes[1].set_xlabel(r"$t_0$")
+    axes[1].set_xlabel(r"$\tau$")
+    axes[1].set_xticks(T0_TICKS)
     for axis in axes:
         axis.grid(alpha=0.2, linewidth=0.3)
 
