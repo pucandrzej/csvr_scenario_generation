@@ -191,7 +191,7 @@ def _evaluate_delivery(task):
             forecasts, order, axis=1
         )  # we use argsort + take_along_axis as we need order either way - it just sorts here
         raw_medians = np.median(forecasts, axis=1)
-        raw_quantiles = np.quantile(forecasts, TAUS, axis=1, method="hazen").T
+        raw_quantiles = np.quantile(forecasts, TAUS, axis=1).T
 
         for t0 in range(30):
             future_actual = actual[t0 + 1 :]
