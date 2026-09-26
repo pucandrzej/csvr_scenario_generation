@@ -102,7 +102,9 @@ median_grid_config = {
         3,
         4,
         5,
-        6,  # five 1 apart
+        6,
+        7,
+        8  # severn 1 apart
     ],
     "trust_threshold_method": [
         "3sigma",
