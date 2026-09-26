@@ -1,12 +1,18 @@
 """File parses the test (validation) results of trading strategies and prepares results in format coherent with the one used in the paper"""
 
-import pandas as pd
+import argparse
 import os
+
+import pandas as pd
 
 from config.paths import TEST_STRATEGIES_MEASURES_DIR, PAPER_TABLES_DIR
 
 RAW_PATTERN = "test_trading_strategy_measures_"
 OUTPUT_FILE = "strategies_summary_table.csv"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--results_directory", default=TEST_STRATEGIES_MEASURES_DIR)
+args = parser.parse_args()
 
 # HELPER
 
@@ -86,14 +92,14 @@ def classify_strategy(meta):
 
 for subdir in ["kernel", "mae", "static"]:
     rows = []
-    for file in os.listdir(os.path.join(TEST_STRATEGIES_MEASURES_DIR, subdir)):
+    for file in os.listdir(os.path.join(args.results_directory, subdir)):
         if "_naive_" in file:
             print(f"Naive results should be analysed manually. Skipping: {file}")
             continue
         meta = parse_filename(file)
         cls = classify_strategy(meta)
 
-        df = pd.read_csv(os.path.join(TEST_STRATEGIES_MEASURES_DIR, subdir, file))
+        df = pd.read_csv(os.path.join(args.results_directory, subdir, file))
 
         dynamic_df = df[df["weights"] != "_"]
         baseline_df = df[df["weights"] == "_"]
