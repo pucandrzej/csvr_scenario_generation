@@ -2,8 +2,8 @@ import numpy as np
 
 bands_grid_config = {
     "scp": np.arange(0.05, 1.00, 0.05),
-    "p_list": [0.25, 0.5, 1.0, 2.5, 3.75, 4.5, 5.5, 5.75],
-    "lambda_list": [0.2, 0.35, 0.45, 0.5, 0.6, 1.0, 1.25, 2.0],
+    "p_list": [0.25, 0.5, 0.75, 1.25, 4.5],
+    "lambda_list": [0.0, 0.4, 0.45, 0.55, 0.8, 1.0, 1.5, 4.0, 8.0],
     "trust_threshold_method": [
         "3sigma",
         "5_95_IPR",  # IPR: InterPercentile Range
