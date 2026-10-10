@@ -1,6 +1,6 @@
 scenario_selection,model_setting,model,mae_selected_p,mae_selected_lambda,mae_calibration,mae_improvement_pct,crps_selected_p,crps_selected_lambda,crps_calibration,crps_improvement_pct
-naive,_____None____,benchmark_prediction,0.5,1.5,5.166755672868372,18.18811028618792,0.5,0.9,2.0191162421419926,16.63805063112855
-historical,_hist_insample_None_False_None,MULTI_prediction,0.5,2.0,5.488877425816178,13.554938692024136,0.5,1.5,2.226580361536401,14.223792795630654
-fundamental,_weather_scenarios_None_False_None,MULTI_prediction,1.25,4.0,5.680334241885979,10.855850981062089,1.0,2.0,2.636420854917203,8.656798395110549
-SVS historical,_hist_insample_None_True_dual_coeff,MULTI_prediction,0.5,1.25,5.420900842195248,15.47423762999643,0.25,2.0,2.125195224562494,14.230567710115048
-SVS fundamental,_weather_scenarios_None_True_dual_coeff,MULTI_prediction,1.25,4.0,5.808070111560141,9.397211553844416,1.0,1.5,2.71651759410394,6.759872392621252
+naive,_____None____,benchmark_prediction,0.5,1.5,5.166386701305422,18.19191329553024,0.5,0.9,2.018116293874119,16.673288874974936
+historical,_hist_insample_None_False_None,MULTI_prediction,0.5,2.0,5.476845695891768,13.720700197350949,0.5,1.5,2.214597744516964,14.633734812185834
+fundamental,_weather_scenarios_None_False_None,MULTI_prediction,2.5,3.0,5.623682480243198,11.66846306544021,1.0,2.0,2.6299709732016496,8.83724197872504
+SVS historical,_hist_insample_None_True_dual_coeff,MULTI_prediction,0.5,1.25,5.400650145009879,15.735273972744528,0.25,2.0,2.1173932512239526,14.49042156781504
+SVS fundamental,_weather_scenarios_None_True_dual_coeff,MULTI_prediction,2.75,3.0,5.757379419877958,10.102291930534385,1.0,1.5,2.70723146991902,7.018672676651627
