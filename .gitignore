@@ -241,10 +241,16 @@ TIMING_RESULTS
 # local audit and diagnostic artifacts
 launch.json
 my_todo_notes.txt
-CODEX_AUDIT_NOTES.md
+AUDIT_NOTES.md
 tmp/
 scenarios_counts_dict.pkl
 Trading_strategies/strategies_utils/test.ipynb
+Forecasting_results_analysis/test_weighted_quantiles_consistency.py
+Trading_strategies/best_bands_parameters.py
+Trading_strategies/compare_weighted_quantiles.py
+Trading_strategies/strategies_utils/test.py
+Trading_strategies/test_calibration_grid.py
+Trading_strategies/test_spread_entry_guard.py
 TEST_DIR/
 PAPER_FIGURES/DM_*.png
 PAPER_FIGURES/*.html

@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 from config.paths import GENERAL_STRATEGY_RESULTS, PAPER_FIGURES_DIR
 
 
-plt.style.use("paper_style.mplstyle")
+plt.style.use("config/latex_style.mplstyle")
 Paper_width = 6.30045
 T0_TICKS = [1, 5, 10, 15, 20, 25, 30]
 PLOT_MODEL_LABELS = {

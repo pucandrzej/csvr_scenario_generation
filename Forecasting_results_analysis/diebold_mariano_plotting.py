@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 
 
 Paper_width = 6.30045
-plt.style.use("paper_style.mplstyle")
+plt.style.use("config/latex_style.mplstyle")
 
 PAPER_NAMING = {
     "approach": {

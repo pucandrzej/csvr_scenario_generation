@@ -99,6 +99,6 @@ if __name__ == "__main__":
 
     for test in tests:
         test()
-        print(f"✓ {test.__name__}")
+        print(f"OK: {test.__name__}")
 
-    print(f"\n✓ ALL {len(tests)} TESTS PASSED")
+    print(f"\nOK: ALL {len(tests)} TESTS PASSED")
