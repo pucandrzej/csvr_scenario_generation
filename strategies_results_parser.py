@@ -104,8 +104,8 @@ for subdir in ["kernel", "mae", "static"]:
         dynamic_df = df[df["weights"] != "_"]
         baseline_df = df[df["weights"] == "_"]
 
-        dynamic = dynamic_df.loc[dynamic_df["Sortino_ratio"].idxmax()]
-        baseline = baseline_df.loc[baseline_df["Sortino_ratio"].idxmax()]
+        dynamic = dynamic_df.loc[dynamic_df["profit"].idxmax()]
+        baseline = baseline_df.loc[baseline_df["profit"].idxmax()]
 
         row = {
             # Grouping

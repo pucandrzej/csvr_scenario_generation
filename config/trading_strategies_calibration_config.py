@@ -14,9 +14,7 @@ bands_grid_config = {
     "parameter_method_2": ["mae"],
 }
 
-# Frozen (p, lambda) pairs from reweighting calibration, matching
-# PAPER_TABLES/reweighting_best_parameters.csv on 2026-09-07.
-# Trading calibration never selects these parameters from result files at runtime.
+# Frozen experimental (p, lambda) pairs from reweighting calibration
 reweighting_best_params = {
     ("_____None____", "benchmark_prediction"): {
         "mae": (0.5, 1.5), "crps": (0.5, 0.9),
@@ -37,7 +35,9 @@ reweighting_best_params = {
 
 
 def trading_calibration_grid(strategy, model_setting, model):
-    """Use frozen model-specific weights and calibrate thresholds/SCP only."""
+    """Use frozen model-specific weights and calibrate thresholds/SCP only.
+    WARNING: Experimental approach, rejected as it did not give better results
+    for us: not a part of the article"""
     config = {"median": median_grid_config, "bands": bands_grid_config}[strategy]
     metric = "mae" if strategy == "median" else "crps"
     p, lambda_ = reweighting_best_params[(model_setting, model)][metric]
@@ -47,6 +47,7 @@ def trading_calibration_grid(strategy, model_setting, model):
         for scp in config["scp"]
         for threshold in config["trust_threshold_method"]
     ]
+
 
 median_grid_config = {
     "scp": [np.nan],

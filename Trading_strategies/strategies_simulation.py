@@ -703,9 +703,9 @@ if __name__ == "__main__":
             ],
         )
 
-        # RATIO as we maximize the profit and minimize risk
+        # Report Sortino alongside profit.
         df["Sortino_ratio"] = df["profit"] / df["std_minus"]
-        df = df.sort_values("Sortino_ratio", ascending=False)
+        df = df.sort_values("profit", ascending=False)
 
         if args.run_type == "calibration":
             df.to_csv(

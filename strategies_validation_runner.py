@@ -21,7 +21,7 @@ parser.add_argument(
     help="No of parallel processes in underlying simulation.",
 )
 parser.add_argument("--special_results_directory")
-parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="Sortino_ratio")
+parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="profit")
 args = parser.parse_args()
 
 calibration_results_dir = CALIBRATION_STRATEGIES_MEASURES_DIR

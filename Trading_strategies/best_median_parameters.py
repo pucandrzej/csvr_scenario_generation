@@ -7,7 +7,7 @@ import pandas as pd
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="Sortino_ratio")
+parser.add_argument("--metric", choices=["Sortino_ratio", "profit"], default="profit")
 args = parser.parse_args()
 
 directory = (
