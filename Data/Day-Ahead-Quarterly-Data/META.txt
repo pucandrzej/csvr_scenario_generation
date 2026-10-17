@@ -1,7 +1,11 @@
-q-hourly prices downloaded from ENTSOe
+Quarter-hourly prices downloaded from ENTSO-E on 2025-06-20.
+Link: https://transparency.entsoe.eu/market/energyPrices.
 
 Description:
 For the BZN|DE-LU, trading is possible on EPEX SPOT and EXAA. 
-At EXAA, it is possible to trade quarterly products for the following day until the gate closure time at 10:15 a.m. 
+At EXAA, it is possible to trade quarter-hourly products for the following day until the gate closure time at 10:15 a.m. 
 At EPEX SPOT, hourly day-ahead prices can be traded within the European Market Coupling until gate closure time at 12:00.
 Both prices are being published. 
+
+The PLN_EUR_2018_2019.csv was downloaded from Investing.com on 2025-06-20.
+Link: https://pl.investing.com/currencies/eur-pln-historical-data.

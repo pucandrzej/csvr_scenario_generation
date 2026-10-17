@@ -1,1 +1,9 @@
-generation data downloaded from ENTSOe
+Generation forecast data for wind (offshore and onshore) and solar,
+downloaded from ENTSO-E on 2025-06-09.
+Links:
+https://transparency.entsoe.eu/generation/forecast/windAndSolar/onshore,
+https://transparency.entsoe.eu/generation/forecast/windAndSolar/offshore,
+https://transparency.entsoe.eu/generation/forecast/windAndSolar/solar.
+
+Actual generation data downloaded from ENTSO-E on 2023-05-17.
+Link: https://transparency.entsoe.eu/generation/actual/perType/generation.

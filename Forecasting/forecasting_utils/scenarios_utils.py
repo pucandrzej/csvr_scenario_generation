@@ -335,7 +335,7 @@ def build_weather_scenarios_and_similarity(
             hour=16
         ) + timedelta(
             minutes=exog_avail_mins - shift
-        )  # the timestamp before which we expect the ENTSOe data to be available
+        )  # the timestamp before which we expect the ENTSO-E data to be available
 
         last_trade_time = (pd.to_datetime(date_fore) - timedelta(days=1)).replace(
             hour=16

@@ -1,1 +1,2 @@
-Load data downloaded from ENTSOe
+Actual total load and day-ahead total load forecasts data downloaded from ENTSO-E on 2024-03-09.
+Link: https://transparency.entsoe.eu/load/total/dayAhead.

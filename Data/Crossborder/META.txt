@@ -1,1 +1,5 @@
-Crossboarder physical flows downloaded from ENTSOe
+Cross-border physical flows downloaded from ENTSO-E on 2025-06-12.
+Link: https://transparency.entsoe.eu/transmission/physicalFlows.
+
+Cross-border commercial flows downloaded from ENTSO-E on 2025-06-20.
+Link: https://transparency.entsoe.eu/transmission/scheduledExchange.
