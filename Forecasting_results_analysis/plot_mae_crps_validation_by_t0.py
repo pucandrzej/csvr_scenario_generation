@@ -257,6 +257,7 @@ def main():
         )
     )
     results = pd.read_csv(input_path)
+    results[["crps_raw", "crps_weighted"]] *= 2  # Stored scores are mean pinball losses.
     if args.model_setting:
         results = results[results["model_setting"] == args.model_setting]
     if results.empty:
